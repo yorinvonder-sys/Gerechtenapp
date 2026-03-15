@@ -199,22 +199,13 @@ function FridgeScanner({ onItemsDetected, existingItems }) {
     }, 2500);
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6-20250514",
-          max_tokens: 1000,
-          messages: [{
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: { type: "base64", media_type: mediaType, data: base64 }
-              },
-              {
-                type: "text",
-                text: `Analyseer deze foto van een koelkast/voorraad. Identificeer ALLE zichtbare producten. Maak voor elk product een inschatting van de hoeveelheid die er nog over is (in gram, ml, stuks, of een beschrijving zoals "half pak", "bijna op").
+          contents: [{ parts: [
+            { inlineData: { mimeType: mediaType, data: base64 } },
+            { text: `Analyseer deze foto van een koelkast/voorraad. Identificeer ALLE zichtbare producten. Maak voor elk product een inschatting van de hoeveelheid die er nog over is (in gram, ml, stuks, of een beschrijving zoals "half pak", "bijna op").
 
 Bij doorzichtige verpakkingen of goed zichtbare producten: geef een zo precies mogelijke schatting.
 Bij ondoorzichtige verpakkingen: geef een schatting op basis van hoe vol/zwaar het eruitziet.
@@ -222,10 +213,9 @@ Bij ondoorzichtige verpakkingen: geef een schatting op basis van hoe vol/zwaar h
 Categoriseer elk product in een van deze categorieën: Groente & Fruit, Vlees & Vis, Zuivel, Droog & Granen, Kruiden & Specerijen, Sauzen & Oliën, Diepvries, Overig.
 
 Antwoord ALLEEN met valid JSON in dit formaat, zonder markdown of backticks:
-{"items":[{"name":"productnaam","category":"categorie","quantity":"geschatte hoeveelheid","confidence":"hoog/middel/laag"}]}`
-              }
-            ]
-          }],
+{"items":[{"name":"productnaam","category":"categorie","quantity":"geschatte hoeveelheid","confidence":"hoog/middel/laag"}]}` }
+          ] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1000 },
         }),
       });
 
@@ -234,7 +224,7 @@ Antwoord ALLEEN met valid JSON in dit formaat, zonder markdown of backticks:
       const data = await response.json();
       if (data.error) throw new Error(data.error.message || "API fout");
 
-      const text = data.content?.map(c => c.text || "").join("") || "";
+      const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
       const cleaned = text.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(cleaned);
 
@@ -1135,22 +1125,23 @@ export default function RecipeApp({ session }) {
     const servings = profile?.household_size || 2;
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6-20250514",
-          max_tokens: 1200,
-          messages: [{ role: "user", content: userPrompt }],
-          system: `Je bent een creatieve Nederlandse chef-kok. Bedenk 5 VERSCHILLENDE receptideeën in het Nederlands op basis van de wensen. Zorg voor variatie in keuken, bereidingswijze en smaakprofiel. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+          contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Bedenk 5 VERSCHILLENDE receptideeën in het Nederlands op basis van de wensen. Zorg voor variatie in keuken, bereidingswijze en smaakprofiel. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
 [{"title":"naam gerecht","description":"korte appetijt-opwekkende beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","imageQuery":"english search term for this specific dish for image search"},{"title":"..."},...]
-Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn voor het gerecht (bijv. "pad thai noodles", "mushroom risotto").`
+Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn voor het gerecht (bijv. "pad thai noodles", "mushroom risotto").
+
+Gebruikerswensen:
+${userPrompt}` }] }],
+          generationConfig: { temperature: 0.9, maxOutputTokens: 1200 },
         }),
       });
 
       const data = await response.json();
       if (data.error) throw new Error(data.error.message || "API fout");
-      const text = data.content?.map(c => c.text || "").join("") || "";
+      const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
 
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Geen suggesties ontvangen");
@@ -1171,21 +1162,27 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
     const userPrompt = buildUserPrompt();
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: `Werk het volgende receptidee volledig uit:\n\nGerecht: ${suggestion.title}\nBeschrijving: ${suggestion.description}\nKeuken: ${suggestion.cuisine}\n\nContext van de gebruiker:\n${userPrompt}` }],
-          system: `Je bent een creatieve Nederlandse chef-kok. Werk het gegeven receptidee uit tot een volledig recept in het Nederlands, voor ${servings} personen. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
-{"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingrediënt 1","ingrediënt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}`
+          contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Werk het gegeven receptidee uit tot een volledig recept in het Nederlands, voor ${servings} personen. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+{"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingrediënt 1","ingrediënt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}
+
+Werk dit receptidee uit:
+Gerecht: ${suggestion.title}
+Beschrijving: ${suggestion.description}
+Keuken: ${suggestion.cuisine}
+
+Context van de gebruiker:
+${userPrompt}` }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
         }),
       });
 
       const data = await response.json();
       if (data.error) throw new Error(data.error.message || "API fout");
-      const text = data.content?.map(c => c.text || "").join("") || "";
+      const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
 
       const newRecipe = {
