@@ -1198,7 +1198,7 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
       if (saved) {
         setRecipes(prev => [{ ...newRecipe, id: saved.id, isOwn: true }, ...prev]);
       }
-      setPrompt(""); setSelectedCuisines([]); setSelectedDiets([]); setSelectedTime(""); setUsePantry(false); setSuggestions([]); setGenStatus("");
+      setPrompt(""); setSelectedCuisines([]); setSelectedDiets([]); setSelectedTime(""); setUsePantry(false); setSuggestions([]); setGenStatus(""); setWizardStep(0);
     } catch (err) {
       setError("Oeps! " + (err.message || "Er ging iets mis.")); setGenStatus("");
     }
@@ -1360,7 +1360,7 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
 
         {activeTab === "recepten" && (
           <>
-            {/* Generator */}
+            {/* Generator - Wizard */}
             <div style={{
               background: "#FFFCF7", borderRadius: 24, padding: "28px 24px 22px",
               boxShadow: "0 4px 28px rgba(139,111,71,0.10)", marginBottom: 24,
@@ -1370,174 +1370,376 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
                 position: "absolute", top: -10, right: -10, fontSize: 80, opacity: 0.05,
                 transform: "rotate(20deg)", pointerEvents: "none",
               }}>✨</div>
-              <h2 style={{
-                fontFamily: "'Playfair Display', serif", fontSize: 22, color: "#3D2E1F",
-                margin: "0 0 16px", display: "flex", alignItems: "center", gap: 10,
-                position: "relative",
-              }}>
-                <span style={{
-                  background: "linear-gradient(135deg, #D4A574, #C09060)",
-                  borderRadius: 12, padding: "6px 10px", fontSize: 20,
-                }}>✨</span>
-                Nieuw recept
-              </h2>
 
-              {/* Snelkeuze suggesties */}
-              {(() => {
-                const hour = new Date().getHours();
-                const mealSuggestion = hour < 10 ? "Ontbijt" : hour < 14 ? "Lunch" : hour < 17 ? "Tussendoortje" : "Diner";
-                const mealEmoji = hour < 10 ? "🥐" : hour < 14 ? "🥗" : hour < 17 ? "🍪" : "🍽️";
-                const quickPicks = [
-                  { label: mealSuggestion, emoji: mealEmoji, prompt: `Een lekker ${mealSuggestion.toLowerCase()} gerecht` },
-                  { label: "Iets snels", emoji: "⚡", prompt: "Een snel en makkelijk gerecht onder 15 minuten" },
-                  { label: "Comfort food", emoji: "🫕", prompt: "Een lekker comfort food gerecht, hartig en warm" },
-                  { label: "Gezond", emoji: "🥦", prompt: "Een gezond en voedzaam gerecht met veel groenten" },
-                  { label: "Budget", emoji: "💰", prompt: "Een lekker maar goedkoop gerecht met simpele ingrediënten" },
-                ];
-                const favCuisineArr = Array.isArray(profile?.favorite_cuisine) ? profile.favorite_cuisine : [];
-                const cuisinePicks = favCuisineArr.slice(0, 3).map(c => {
-                  const vis = CUISINE_VISUALS[c] || DEFAULT_VISUAL;
-                  return { label: c, emoji: vis.emoji, prompt: `Een lekker ${c.toLowerCase()} gerecht` };
-                });
-                const allPicks = [...quickPicks, ...cuisinePicks];
-                return (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{
-                      display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4,
-                      scrollbarWidth: "none", msOverflowStyle: "none",
-                    }}>
-                      {allPicks.map((pick) => (
-                        <button key={pick.label} onClick={() => { setPrompt(pick.prompt); }}
-                          style={{
-                            padding: "8px 14px", borderRadius: 20,
-                            border: prompt === pick.prompt ? "2px solid #8B6F47" : "1.5px solid #E2DAD0",
-                            background: prompt === pick.prompt ? "#8B6F4712" : "#FAF7F2",
-                            color: prompt === pick.prompt ? "#8B6F47" : "#6B5D4F",
-                            fontSize: 13, fontFamily: "'DM Sans', sans-serif",
-                            fontWeight: prompt === pick.prompt ? 600 : 400,
-                            cursor: "pointer", transition: "all 0.2s",
-                            whiteSpace: "nowrap", flexShrink: 0,
-                            display: "flex", alignItems: "center", gap: 5,
-                          }}
-                        >
-                          <span>{pick.emoji}</span> {pick.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                placeholder={`Of typ zelf wat je wilt eten...`}
-                rows={3}
-                style={{
-                  width: "100%", padding: "14px 16px", borderRadius: 12,
-                  border: "1.5px solid #E2DAD0", background: "#FAF7F2",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#3D2E1F",
-                  resize: "vertical", lineHeight: 1.5,
-                }}
-                onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) generateRecipe(); }}
-              />
-
-              {pantry.length > 0 && (
-                <button onClick={() => setUsePantry(!usePantry)}
-                  style={{
-                    marginTop: 10, padding: "10px 16px", borderRadius: 12, width: "100%",
-                    border: usePantry ? "2px solid #6B8F5E" : "1.5px dashed #D5CEC4",
-                    background: usePantry ? "#6B8F5E10" : "transparent",
-                    color: usePantry ? "#5A7D4E" : "#8C7E6F",
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
-                    cursor: "pointer", transition: "all 0.25s", textAlign: "left",
-                    display: "flex", alignItems: "center", gap: 10,
-                  }}
-                >
+              {/* Wizard header with progress */}
+              <div style={{ position: "relative", marginBottom: 20 }}>
+                <h2 style={{
+                  fontFamily: "'Playfair Display', serif", fontSize: 22, color: "#3D2E1F",
+                  margin: "0 0 14px", display: "flex", alignItems: "center", gap: 10,
+                }}>
                   <span style={{
-                    width: 22, height: 22, borderRadius: 6, display: "flex",
-                    alignItems: "center", justifyContent: "center", fontSize: 14,
-                    background: usePantry ? "#6B8F5E" : "#EDE8E0",
-                    color: usePantry ? "#fff" : "#B5A999", transition: "all 0.25s", flexShrink: 0,
-                  }}>{usePantry ? "✓" : ""}</span>
-                  <span>
-                    🧊 Kook met onze voorraad
-                    <span style={{ fontSize: 12, opacity: 0.7, marginLeft: 6 }}>
-                      ({pantry.length} product{pantry.length !== 1 ? "en" : ""}: {pantry.slice(0, 4).map(p => p.name).join(", ")}{pantry.length > 4 ? "..." : ""})
+                    background: "linear-gradient(135deg, #D4A574, #C09060)",
+                    borderRadius: 12, padding: "6px 10px", fontSize: 20,
+                  }}>✨</span>
+                  {choosingRecipe ? "Kies je gerecht" : loading ? "Even geduld..." : wizardStep === 0 ? "Wat wil je eten?" : wizardStep === 1 ? "Verfijn je keuze" : "Bijna klaar!"}
+                </h2>
+                {/* Progress dots */}
+                {!choosingRecipe && !loading && (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {[0, 1, 2].map(s => (
+                      <button key={s} onClick={() => s <= wizardStep && setWizardStep(s)}
+                        style={{
+                          width: s === wizardStep ? 24 : 8, height: 8, borderRadius: 4, border: "none",
+                          background: s <= wizardStep ? "linear-gradient(135deg, #D4A574, #C09060)" : "#E2DAD0",
+                          cursor: s <= wizardStep ? "pointer" : "default",
+                          transition: "all 0.3s ease",
+                        }}
+                      />
+                    ))}
+                    <span style={{ fontSize: 11, color: "#B5A999", marginLeft: 6, fontFamily: "'DM Sans', sans-serif" }}>
+                      Stap {wizardStep + 1} van 3
                     </span>
-                  </span>
-                </button>
-              )}
+                  </div>
+                )}
+              </div>
 
-              {pantry.length === 0 && (
-                <button onClick={() => setActiveTab("voorraad")}
-                  style={{
-                    marginTop: 10, padding: "10px 16px", borderRadius: 12, width: "100%",
-                    border: "1.5px dashed #D5CEC4", background: "transparent",
-                    color: "#B5A999", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
-                    cursor: "pointer", transition: "all 0.2s", textAlign: "center",
-                  }}
-                  onMouseEnter={(e) => { e.target.style.borderColor = "#6B8F5E"; e.target.style.color = "#6B8F5E"; }}
-                  onMouseLeave={(e) => { e.target.style.borderColor = "#D5CEC4"; e.target.style.color = "#B5A999"; }}
-                >🧊 Voeg producten toe of scan je koelkast →</button>
-              )}
-
-              <button onClick={() => setShowFilters(!showFilters)}
-                style={{
-                  background: "none", border: "none", color: "#8B6F47",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: "pointer",
-                  padding: "8px 0", fontWeight: 500, display: "flex", alignItems: "center", gap: 4,
-                }}
-              >🎛️ Filters {showFilters ? "verbergen ▲" : "tonen ▼"}</button>
-
-              {showFilters && (
+              {/* STEP 0: Inspiratie & prompt */}
+              {wizardStep === 0 && !choosingRecipe && !loading && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  <div style={{ marginBottom: 12 }}>
-                    <p style={{ fontSize: 12, color: "#8C7E6F", margin: "0 0 6px", fontWeight: 600 }}>Keuken</p>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {CUISINES.map(c => <TagPill key={c} label={c} active={selectedCuisines.includes(c)} onClick={() => toggle(selectedCuisines, setSelectedCuisines, c)} />)}
-                    </div>
+                  {/* Quick inspiration cards */}
+                  {(() => {
+                    const hour = new Date().getHours();
+                    const mealSuggestion = hour < 10 ? "Ontbijt" : hour < 14 ? "Lunch" : hour < 17 ? "Tussendoortje" : "Diner";
+                    const mealEmoji = hour < 10 ? "🥐" : hour < 14 ? "🥗" : hour < 17 ? "🍪" : "🍽️";
+                    const quickPicks = [
+                      { label: mealSuggestion, emoji: mealEmoji, prompt: `Een lekker ${mealSuggestion.toLowerCase()} gerecht`, sub: "Past bij dit moment" },
+                      { label: "Iets snels", emoji: "⚡", prompt: "Een snel en makkelijk gerecht onder 15 minuten", sub: "Klaar in 15 min" },
+                      { label: "Comfort food", emoji: "🫕", prompt: "Een lekker comfort food gerecht, hartig en warm", sub: "Hartig & warm" },
+                      { label: "Gezond", emoji: "🥦", prompt: "Een gezond en voedzaam gerecht met veel groenten", sub: "Vol groenten" },
+                      { label: "Budget", emoji: "💰", prompt: "Een lekker maar goedkoop gerecht met simpele ingrediënten", sub: "Simpele ingrediënten" },
+                      { label: "Verrassend", emoji: "🎲", prompt: "Verras me met een onverwacht maar lekker gerecht", sub: "Laat je verrassen" },
+                    ];
+                    return (
+                      <div style={{ marginBottom: 16 }}>
+                        <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 10px", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
+                          Snelle inspiratie
+                        </p>
+                        <div style={{
+                          display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8,
+                        }}>
+                          {quickPicks.map((pick) => (
+                            <button key={pick.label} onClick={() => { setPrompt(pick.prompt); setWizardStep(1); }}
+                              style={{
+                                padding: "14px 10px", borderRadius: 14,
+                                border: prompt === pick.prompt ? "2px solid #8B6F47" : "1.5px solid #EDE8E0",
+                                background: prompt === pick.prompt ? "#8B6F4710" : "#FAF7F2",
+                                cursor: "pointer", transition: "all 0.2s",
+                                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                                textAlign: "center",
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#D4A574"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = prompt === pick.prompt ? "#8B6F47" : "#EDE8E0"; e.currentTarget.style.transform = "translateY(0)"; }}
+                            >
+                              <span style={{ fontSize: 24 }}>{pick.emoji}</span>
+                              <span style={{ fontSize: 12.5, fontWeight: 600, color: "#3D2E1F", fontFamily: "'DM Sans', sans-serif" }}>{pick.label}</span>
+                              <span style={{ fontSize: 10.5, color: "#A89B8A", fontFamily: "'DM Sans', sans-serif" }}>{pick.sub}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Divider */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "4px 0 14px" }}>
+                    <div style={{ flex: 1, height: 1, background: "#EDE8E0" }} />
+                    <span style={{ fontSize: 11, color: "#B5A999", fontFamily: "'DM Sans', sans-serif" }}>of typ zelf</span>
+                    <div style={{ flex: 1, height: 1, background: "#EDE8E0" }} />
                   </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <p style={{ fontSize: 12, color: "#8C7E6F", margin: "0 0 6px", fontWeight: 600 }}>Dieet</p>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {DIETS.map(d => <TagPill key={d} label={d} active={selectedDiets.includes(d)} onClick={() => toggle(selectedDiets, setSelectedDiets, d)} color="#6B8F5E" />)}
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: 4 }}>
-                    <p style={{ fontSize: 12, color: "#8C7E6F", margin: "0 0 6px", fontWeight: 600 }}>Bereidingstijd</p>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {TIMES.map(t => <TagPill key={t} label={t} active={selectedTime === t} onClick={() => setSelectedTime(selectedTime === t ? "" : t)} color="#C85A3D" />)}
-                    </div>
+
+                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Beschrijf wat je wilt eten..."
+                    rows={2}
+                    style={{
+                      width: "100%", padding: "14px 16px", borderRadius: 14,
+                      border: "1.5px solid #E2DAD0", background: "#FAF7F2",
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#3D2E1F",
+                      resize: "none", lineHeight: 1.5,
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) generateRecipe(); }}
+                  />
+
+                  {/* Next / Skip to generate */}
+                  <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                    <button onClick={() => setWizardStep(1)}
+                      disabled={!prompt.trim()}
+                      style={{
+                        flex: 1, padding: "14px", borderRadius: 12, border: "none",
+                        background: prompt.trim() ? "linear-gradient(135deg, #D4A574, #C09060)" : "#EDE8E0",
+                        color: prompt.trim() ? "#fff" : "#B5A999",
+                        fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+                        cursor: prompt.trim() ? "pointer" : "default", transition: "all 0.3s",
+                      }}
+                    >Volgende →</button>
+                    <button onClick={() => { setWizardStep(2); }}
+                      style={{
+                        padding: "14px 18px", borderRadius: 12,
+                        border: "1.5px solid #E2DAD0", background: "transparent",
+                        color: "#8C7E6F", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                        cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
+                      }}
+                    >Sla over</button>
                   </div>
                 </div>
               )}
 
-              {error && <p style={{ color: "#C85A3D", fontSize: 13, margin: "8px 0 0", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{error}</p>}
-
-              {/* Suggestion Cards */}
-              {choosingRecipe && suggestions.length > 0 && (
-                <div style={{ marginTop: 16, animation: "fadeIn 0.4s ease" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#3D2E1F", margin: 0, fontFamily: "'Playfair Display', serif" }}>
-                      Kies een gerecht
-                    </p>
-                    <button onClick={() => { setChoosingRecipe(false); setSuggestions([]); }}
-                      style={{ background: "none", border: "none", fontSize: 12, color: "#A89B8A", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                    >Annuleren ✕</button>
-                  </div>
-                  <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 12px", fontFamily: "'DM Sans', sans-serif" }}>
-                    Swipe of klik om te kiezen →
+              {/* STEP 1: Keuken & voorkeuren */}
+              {wizardStep === 1 && !choosingRecipe && !loading && (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  {/* Cuisine as visual mini-cards */}
+                  <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 10px", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
+                    Kies een keuken (optioneel)
                   </p>
                   <div style={{
-                    display: "flex", gap: 14, overflowX: "auto", paddingBottom: 12,
+                    display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 18,
+                  }}>
+                    {CUISINES.map(c => {
+                      const vis = CUISINE_VISUALS[c] || DEFAULT_VISUAL;
+                      const active = selectedCuisines.includes(c);
+                      return (
+                        <button key={c} onClick={() => toggle(selectedCuisines, setSelectedCuisines, c)}
+                          style={{
+                            padding: "10px 4px", borderRadius: 12,
+                            border: active ? "2px solid #8B6F47" : "1.5px solid #EDE8E0",
+                            background: active ? vis.gradient : "#FAF7F2",
+                            cursor: "pointer", transition: "all 0.2s",
+                            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                          }}
+                        >
+                          <span style={{ fontSize: 20, filter: active ? "brightness(10)" : "none" }}>{vis.emoji}</span>
+                          <span style={{
+                            fontSize: 10.5, fontWeight: active ? 600 : 400,
+                            color: active ? "#fff" : "#6B5D4F",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}>{c}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Diet pills */}
+                  <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 8px", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
+                    Dieetwensen (optioneel)
+                  </p>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
+                    {DIETS.map(d => <TagPill key={d} label={d} active={selectedDiets.includes(d)} onClick={() => toggle(selectedDiets, setSelectedDiets, d)} color="#6B8F5E" />)}
+                  </div>
+
+                  {/* Pantry toggle */}
+                  {pantry.length > 0 && (
+                    <button onClick={() => setUsePantry(!usePantry)}
+                      style={{
+                        marginBottom: 16, padding: "12px 16px", borderRadius: 14, width: "100%",
+                        border: usePantry ? "2px solid #6B8F5E" : "1.5px solid #EDE8E0",
+                        background: usePantry ? "linear-gradient(135deg, #6B8F5E10, #6B8F5E08)" : "#FAF7F2",
+                        color: usePantry ? "#5A7D4E" : "#8C7E6F",
+                        fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
+                        cursor: "pointer", transition: "all 0.25s", textAlign: "left",
+                        display: "flex", alignItems: "center", gap: 10,
+                      }}
+                    >
+                      <span style={{
+                        width: 26, height: 26, borderRadius: 8, display: "flex",
+                        alignItems: "center", justifyContent: "center", fontSize: 15,
+                        background: usePantry ? "#6B8F5E" : "#EDE8E0",
+                        color: usePantry ? "#fff" : "#B5A999", transition: "all 0.25s", flexShrink: 0,
+                      }}>{usePantry ? "✓" : "🧊"}</span>
+                      <span>
+                        Kook met onze voorraad
+                        <span style={{ fontSize: 11.5, opacity: 0.7, display: "block", marginTop: 1 }}>
+                          {pantry.length} product{pantry.length !== 1 ? "en" : ""} beschikbaar
+                        </span>
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Nav buttons */}
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setWizardStep(0)}
+                      style={{
+                        padding: "14px 18px", borderRadius: 12,
+                        border: "1.5px solid #E2DAD0", background: "transparent",
+                        color: "#8C7E6F", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                        cursor: "pointer", transition: "all 0.2s",
+                      }}
+                    >← Terug</button>
+                    <button onClick={() => setWizardStep(2)}
+                      style={{
+                        flex: 1, padding: "14px", borderRadius: 12, border: "none",
+                        background: "linear-gradient(135deg, #D4A574, #C09060)",
+                        color: "#fff", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+                        cursor: "pointer", transition: "all 0.3s",
+                      }}
+                    >Volgende →</button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: Bereidingstijd & genereer */}
+              {wizardStep === 2 && !choosingRecipe && !loading && (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 10px", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
+                    Hoeveel tijd heb je?
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 18 }}>
+                    {[
+                      { t: "< 15 min", emoji: "⚡", sub: "Supersnel" },
+                      { t: "15-30 min", emoji: "🍳", sub: "Doordeweeks" },
+                      { t: "30-60 min", emoji: "👨‍🍳", sub: "Uitgebreider" },
+                      { t: "> 60 min", emoji: "🎂", sub: "Alle tijd" },
+                    ].map(({ t, emoji, sub }) => (
+                      <button key={t} onClick={() => setSelectedTime(selectedTime === t ? "" : t)}
+                        style={{
+                          padding: "16px 14px", borderRadius: 14,
+                          border: selectedTime === t ? "2px solid #C85A3D" : "1.5px solid #EDE8E0",
+                          background: selectedTime === t ? "#C85A3D0C" : "#FAF7F2",
+                          cursor: "pointer", transition: "all 0.2s",
+                          display: "flex", alignItems: "center", gap: 12, textAlign: "left",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                      >
+                        <span style={{ fontSize: 24 }}>{emoji}</span>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: selectedTime === t ? "#C85A3D" : "#3D2E1F", fontFamily: "'DM Sans', sans-serif" }}>{t}</div>
+                          <div style={{ fontSize: 11, color: "#A89B8A", fontFamily: "'DM Sans', sans-serif" }}>{sub}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Summary */}
+                  {(prompt.trim() || selectedCuisines.length > 0 || usePantry) && (
+                    <div style={{
+                      padding: "12px 14px", borderRadius: 12, background: "#F5EDE3",
+                      marginBottom: 16, fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#6B5D4F",
+                    }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 11, color: "#A89B8A", textTransform: "uppercase", letterSpacing: 0.5 }}>Jouw keuzes</div>
+                      {prompt.trim() && <div>📝 {prompt.length > 60 ? prompt.slice(0, 60) + "..." : prompt}</div>}
+                      {selectedCuisines.length > 0 && <div>🌍 {selectedCuisines.join(", ")}</div>}
+                      {selectedDiets.length > 0 && <div>🥗 {selectedDiets.join(", ")}</div>}
+                      {selectedTime && <div>⏱ {selectedTime}</div>}
+                      {usePantry && <div>🧊 Met voorraad ({pantry.length} producten)</div>}
+                    </div>
+                  )}
+
+                  {error && <p style={{ color: "#C85A3D", fontSize: 13, margin: "0 0 10px", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{error}</p>}
+
+                  {/* Nav buttons */}
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setWizardStep(1)}
+                      style={{
+                        padding: "14px 18px", borderRadius: 12,
+                        border: "1.5px solid #E2DAD0", background: "transparent",
+                        color: "#8C7E6F", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                        cursor: "pointer", transition: "all 0.2s",
+                      }}
+                    >← Terug</button>
+                    <button onClick={generateRecipe}
+                      style={{
+                        flex: 1, padding: "16px", borderRadius: 12, border: "none",
+                        background: "linear-gradient(135deg, #D4A574 0%, #C09060 50%, #A67B50 100%)",
+                        color: "#fff", fontFamily: "'DM Sans', sans-serif",
+                        fontSize: 15, fontWeight: 700, cursor: "pointer",
+                        transition: "all 0.3s",
+                        boxShadow: "0 6px 24px rgba(212,165,116,0.35)",
+                        letterSpacing: 0.3,
+                      }}
+                      onMouseEnter={(e) => e.target.style.boxShadow = "0 8px 32px rgba(212,165,116,0.45)"}
+                      onMouseLeave={(e) => e.target.style.boxShadow = "0 6px 24px rgba(212,165,116,0.35)"}
+                    >
+                      ✨ Toon 5 receptideeën
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11, color: "#B5A999", textAlign: "center", margin: "10px 0 0", fontFamily: "'DM Sans', sans-serif" }}>
+                    ⌘+Enter als sneltoets
+                  </p>
+                </div>
+              )}
+
+              {/* Loading skeleton */}
+              {loading && (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 12, marginBottom: 20,
+                    padding: "16px", borderRadius: 14, background: "#F5EDE3",
+                  }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: "50%",
+                      border: "3px solid #EDE8E0", borderTopColor: "#D4A574",
+                      animation: "spin 0.8s linear infinite",
+                    }} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#3D2E1F", fontFamily: "'DM Sans', sans-serif" }}>
+                        {genStatus || "Bezig..."}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#A89B8A", fontFamily: "'DM Sans', sans-serif" }}>
+                        Dit duurt meestal 5-10 seconden
+                      </div>
+                    </div>
+                  </div>
+                  {/* Skeleton cards */}
+                  <div style={{ display: "flex", gap: 14, overflowX: "hidden" }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{
+                        flex: "0 0 200px", borderRadius: 16, overflow: "hidden",
+                        background: "#FAF7F2", opacity: 0.6 + i * 0.1,
+                      }}>
+                        <div style={{
+                          height: 100, background: "linear-gradient(90deg, #EDE8E0 25%, #F5EDE3 50%, #EDE8E0 75%)",
+                          backgroundSize: "200% 100%", animation: "shimmer 1.5s ease infinite",
+                        }} />
+                        <div style={{ padding: 12 }}>
+                          <div style={{
+                            height: 14, borderRadius: 7, marginBottom: 8, width: "80%",
+                            background: "linear-gradient(90deg, #EDE8E0 25%, #F5EDE3 50%, #EDE8E0 75%)",
+                            backgroundSize: "200% 100%", animation: "shimmer 1.5s ease infinite",
+                          }} />
+                          <div style={{
+                            height: 10, borderRadius: 5, width: "60%",
+                            background: "linear-gradient(90deg, #EDE8E0 25%, #F5EDE3 50%, #EDE8E0 75%)",
+                            backgroundSize: "200% 100%", animation: "shimmer 1.5s ease infinite",
+                          }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggestion Cards */}
+              {choosingRecipe && suggestions.length > 0 && !loading && (
+                <div style={{ animation: "fadeIn 0.4s ease" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <p style={{ fontSize: 12, color: "#A89B8A", margin: 0, fontFamily: "'DM Sans', sans-serif" }}>
+                      Swipe of klik om te kiezen →
+                    </p>
+                    <button onClick={() => { setChoosingRecipe(false); setSuggestions([]); setWizardStep(0); }}
+                      style={{ background: "none", border: "none", fontSize: 12, color: "#A89B8A", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                    >✕ Opnieuw</button>
+                  </div>
+                  <div style={{
+                    display: "flex", gap: 14, overflowX: "auto", paddingBottom: 12, paddingTop: 6,
                     scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch",
                     scrollbarWidth: "none", msOverflowStyle: "none",
+                    margin: "0 -24px", padding: "6px 24px 12px",
                   }}>
                     {suggestions.map((s, i) => {
                       const vis = CUISINE_VISUALS[s.cuisine] || DEFAULT_VISUAL;
                       return (
                         <button key={i} onClick={() => pickSuggestion(s)}
                           style={{
-                            flex: "0 0 260px", scrollSnapAlign: "center",
+                            flex: "0 0 240px", scrollSnapAlign: "start",
                             borderRadius: 18, border: "none", overflow: "hidden",
                             background: "#FFFCF7", cursor: "pointer",
                             boxShadow: "0 4px 20px rgba(139,111,71,0.12)",
@@ -1545,19 +1747,17 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
                             display: "flex", flexDirection: "column",
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "translateY(-4px)";
-                            e.currentTarget.style.boxShadow = "0 8px 32px rgba(139,111,71,0.2)";
+                            e.currentTarget.style.transform = "translateY(-6px) scale(1.02)";
+                            e.currentTarget.style.boxShadow = "0 12px 40px rgba(139,111,71,0.22)";
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.transform = "translateY(0) scale(1)";
                             e.currentTarget.style.boxShadow = "0 4px 20px rgba(139,111,71,0.12)";
                           }}
                         >
-                          {/* Image */}
                           <div style={{
-                            height: 150, width: "100%", position: "relative",
-                            background: vis.gradient,
-                            overflow: "hidden",
+                            height: 140, width: "100%", position: "relative",
+                            background: vis.gradient, overflow: "hidden",
                           }}>
                             <img
                               src={`https://source.unsplash.com/520x300/?${encodeURIComponent(s.imageQuery || s.title)},food`}
@@ -1569,29 +1769,34 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
                               onLoad={(e) => e.target.style.opacity = 1}
                               onError={(e) => e.target.style.display = "none"}
                             />
-                            {/* Gradient overlay bottom */}
                             <div style={{
-                              position: "absolute", bottom: 0, left: 0, right: 0, height: 60,
-                              background: "linear-gradient(transparent, rgba(0,0,0,0.4))",
+                              position: "absolute", bottom: 0, left: 0, right: 0, height: 70,
+                              background: "linear-gradient(transparent, rgba(0,0,0,0.5))",
                             }} />
-                            {/* Cuisine badge */}
                             <div style={{
                               position: "absolute", top: 10, right: 10,
-                              background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)",
+                              background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
                               borderRadius: 20, padding: "4px 10px",
                               fontSize: 11, fontWeight: 600, color: "#6B5D4F",
                               fontFamily: "'DM Sans', sans-serif",
                             }}>{vis.emoji} {s.cuisine}</div>
-                            {/* Prep time badge */}
                             <div style={{
                               position: "absolute", bottom: 10, left: 10,
-                              background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)",
+                              background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
                               borderRadius: 20, padding: "4px 10px",
                               fontSize: 11, fontWeight: 500, color: "#6B5D4F",
                               fontFamily: "'DM Sans', sans-serif",
                             }}>⏱ {s.prepTime}</div>
+                            {/* Number badge */}
+                            <div style={{
+                              position: "absolute", top: 10, left: 10,
+                              width: 26, height: 26, borderRadius: "50%",
+                              background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: 12, fontWeight: 700, color: "#8B6F47",
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}>{i + 1}</div>
                           </div>
-                          {/* Content */}
                           <div style={{ padding: "14px 16px 16px" }}>
                             <h3 style={{
                               margin: "0 0 6px", fontSize: 15, fontWeight: 700,
@@ -1599,47 +1804,26 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
                               lineHeight: 1.3,
                             }}>{s.title}</h3>
                             <p style={{
-                              margin: 0, fontSize: 12.5, color: "#8C7E6F",
+                              margin: 0, fontSize: 12, color: "#8C7E6F",
                               fontFamily: "'DM Sans', sans-serif", lineHeight: 1.4,
                               display: "-webkit-box", WebkitLineClamp: 2,
                               WebkitBoxOrient: "vertical", overflow: "hidden",
                             }}>{s.description}</p>
+                            <div style={{
+                              marginTop: 10, padding: "8px 0 0",
+                              borderTop: "1px solid #F0EBE4",
+                              fontSize: 12, fontWeight: 600, color: "#D4A574",
+                              fontFamily: "'DM Sans', sans-serif",
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                            }}>
+                              Kies dit gerecht →
+                            </div>
                           </div>
                         </button>
                       );
                     })}
                   </div>
                 </div>
-              )}
-
-              {!choosingRecipe && (
-                <>
-                  <button onClick={generateRecipe} disabled={loading}
-                    style={{
-                      marginTop: 16, width: "100%", padding: "16px", borderRadius: 14, border: "none",
-                      background: loading
-                        ? "linear-gradient(90deg, #D4A574, #C09060, #D4A574)"
-                        : "linear-gradient(135deg, #D4A574 0%, #C09060 50%, #A67B50 100%)",
-                      backgroundSize: loading ? "200% 100%" : "100% 100%",
-                      animation: loading ? "shimmer 1.5s linear infinite" : "none",
-                      color: "#fff", fontFamily: "'DM Sans', sans-serif",
-                      fontSize: 15, fontWeight: 700, cursor: loading ? "wait" : "pointer",
-                      transition: "all 0.3s",
-                      boxShadow: loading ? "0 4px 20px rgba(212,165,116,0.3)" : "0 6px 24px rgba(212,165,116,0.35)",
-                      letterSpacing: 0.3,
-                    }}
-                    onMouseEnter={(e) => !loading && (e.target.style.boxShadow = "0 8px 32px rgba(212,165,116,0.45)")}
-                    onMouseLeave={(e) => !loading && (e.target.style.boxShadow = "0 6px 24px rgba(212,165,116,0.35)")}
-                  >
-                    {loading ? `🍳 ${genStatus || "Bezig..."}` : usePantry ? "🧊 Genereer met voorraad" : "✨ Genereer recept"}
-                  </button>
-                  <p style={{
-                    fontSize: 11, color: "#B5A999", textAlign: "center", margin: "10px 0 0",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}>
-                    Recept wordt toegevoegd als {profile?.display_name || user.email} · ⌘+Enter als sneltoets
-                  </p>
-                </>
               )}
             </div>
 
