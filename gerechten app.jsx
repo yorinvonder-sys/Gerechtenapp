@@ -1496,6 +1496,56 @@ ${userPrompt}` }] }],
                     <div style={{ flex: 1, height: 1, background: "#EDE8E0" }} />
                   </div>
 
+                  {/* URL Import */}
+                  <div style={{ marginBottom: 14 }}>
+                    <button onClick={() => setShowImportUrl(!showImportUrl)}
+                      style={{
+                        width: "100%", padding: "12px 16px", borderRadius: 12,
+                        border: showImportUrl ? "2px solid #8B6F47" : "1.5px dashed #D5CEC4",
+                        background: showImportUrl ? "#8B6F4708" : "transparent",
+                        color: "#8B6F47", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                        fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      }}>
+                      🔗 Importeer recept van URL
+                    </button>
+                    {showImportUrl && (
+                      <div style={{ marginTop: 10, animation: "fadeIn 0.2s ease" }}>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input type="url" value={importUrl}
+                            onChange={(e) => setImportUrl(e.target.value)}
+                            placeholder="https://www.voorbeeld.nl/recept..."
+                            style={{
+                              flex: 1, padding: "10px 14px", borderRadius: 10,
+                              border: "1.5px solid #E2DAD0", background: "#FAF7F2",
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F",
+                            }}
+                            onKeyDown={(e) => { if (e.key === "Enter") importFromUrl(); }}
+                          />
+                          <button onClick={importFromUrl}
+                            disabled={importLoading || !importUrl.trim()}
+                            style={{
+                              padding: "10px 18px", borderRadius: 10, border: "none",
+                              background: importUrl.trim() && !importLoading
+                                ? "linear-gradient(135deg, #D4A574, #C09060)" : "#EDE8E0",
+                              color: importUrl.trim() && !importLoading ? "#fff" : "#B5A999",
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                              fontWeight: 600, cursor: importUrl.trim() && !importLoading ? "pointer" : "default",
+                              whiteSpace: "nowrap",
+                            }}>
+                            {importLoading ? "Bezig..." : "Importeer"}
+                          </button>
+                        </div>
+                        <p style={{
+                          fontSize: 11, color: "#B5A999", margin: "6px 0 0",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}>
+                          AI genereert een recept op basis van de URL
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Beschrijf wat je wilt eten..."
                     rows={2}

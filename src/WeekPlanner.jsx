@@ -32,7 +32,7 @@ function isToday(d) {
   return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
-export default function WeekPlanner({ user, recipes }) {
+export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRecipes }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [mealPlans, setMealPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +43,8 @@ export default function WeekPlanner({ user, recipes }) {
   const [shareStatus, setShareStatus] = useState("");
   const [sharedUsers, setSharedUsers] = useState([]);
   const [showGroceries, setShowGroceries] = useState(false);
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
@@ -138,6 +140,42 @@ export default function WeekPlanner({ user, recipes }) {
     await loadMealPlans();
   };
 
+  const searchUsers = async (query) => {
+    if (query.length < 2) {
+      setUserSuggestions([]);
+      return;
+    }
+    setSearchingUsers(true);
+    const { data } = await supabase.rpc("search_users_by_email", {
+      query_input: query.trim(),
+    });
+    setUserSuggestions(data || []);
+    setSearchingUsers(false);
+  };
+
+  const handleShareEmailChange = (e) => {
+    const val = e.target.value;
+    setShareEmail(val);
+    setShareStatus("");
+    searchUsers(val);
+  };
+
+  const shareWithUser = async (targetUserId) => {
+    const { error } = await supabase.from("shared_meal_plans").upsert({
+      owner_id: user.id,
+      shared_with: targetUserId,
+    });
+    if (error) {
+      setShareStatus("Er ging iets mis");
+    } else {
+      setShareStatus("Gedeeld!");
+      setShareEmail("");
+      setUserSuggestions([]);
+      loadSharedUsers();
+      setTimeout(() => setShareStatus(""), 2000);
+    }
+  };
+
   const sharePlanning = async () => {
     if (!shareEmail.trim()) return;
     setShareStatus("Zoeken...");
@@ -148,18 +186,7 @@ export default function WeekPlanner({ user, recipes }) {
       setShareStatus("Gebruiker niet gevonden");
       return;
     }
-    const { error } = await supabase.from("shared_meal_plans").upsert({
-      owner_id: user.id,
-      shared_with: targetUser,
-    });
-    if (error) {
-      setShareStatus("Er ging iets mis");
-    } else {
-      setShareStatus("Gedeeld!");
-      setShareEmail("");
-      loadSharedUsers();
-      setTimeout(() => setShareStatus(""), 2000);
-    }
+    await shareWithUser(targetUser);
   };
 
   const getMeal = (date, mealType) => {
@@ -168,7 +195,7 @@ export default function WeekPlanner({ user, recipes }) {
     );
   };
 
-  // Boodschappenlijst: verzamel alle ingrediënten van geplande recepten
+  // Boodschappenlijst: verzamel alle ingrediënten van geplande recepten, kruis af met voorraad
   const groceryList = useMemo(() => {
     const ingredients = {};
     mealPlans.forEach((m) => {
@@ -183,8 +210,20 @@ export default function WeekPlanner({ user, recipes }) {
         }
       }
     });
-    return Object.values(ingredients).sort((a, b) => a.name.localeCompare(b.name));
-  }, [mealPlans, recipes]);
+    const pantryNames = (pantry || []).map((p) => p.name.toLowerCase().trim());
+    return Object.values(ingredients)
+      .map((item) => {
+        const keyLower = item.name.toLowerCase().trim();
+        const inPantry = pantryNames.some(
+          (pn) => keyLower.includes(pn) || pn.includes(keyLower)
+        );
+        return { ...item, inPantry };
+      })
+      .sort((a, b) => {
+        if (a.inPantry !== b.inPantry) return a.inPantry ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
+  }, [mealPlans, recipes, pantry]);
 
   const filteredRecipes = recipes.filter(
     (r) =>
@@ -271,24 +310,64 @@ export default function WeekPlanner({ user, recipes }) {
               Plan recepten in om een boodschappenlijst te genereren.
             </p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {groceryList.map((item) => (
-                <div key={item.name} style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "8px 12px", borderRadius: 10, background: "#FAF7F2",
-                  border: "1px solid #EDE8E0",
-                }}>
-                  <span style={{ fontSize: 13, color: "#3D2E1F", fontFamily: "'DM Sans', sans-serif" }}>
-                    {item.name}
-                  </span>
-                  {item.count > 1 && (
+            <div>
+              <p style={{
+                fontSize: 12, color: "#6B8F5E", fontWeight: 600, margin: "0 0 10px",
+                fontFamily: "'DM Sans', sans-serif",
+              }}>
+                ✓ {groceryList.filter((i) => i.inPantry).length} van {groceryList.length} ingrediënten al in huis
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {groceryList.map((item) => (
+                  <div key={item.name} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "8px 12px", borderRadius: 10,
+                    background: item.inPantry ? "#6B8F5E08" : "#FAF7F2",
+                    border: item.inPantry ? "1px solid #6B8F5E30" : "1px solid #EDE8E0",
+                    opacity: item.inPantry ? 0.7 : 1,
+                  }}>
                     <span style={{
-                      fontSize: 11, color: "#8B6F47", fontWeight: 600,
-                      background: "#8B6F4715", padding: "2px 8px", borderRadius: 8,
-                    }}>×{item.count}</span>
-                  )}
-                </div>
-              ))}
+                      fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+                      color: item.inPantry ? "#6B8F5E" : "#3D2E1F",
+                      textDecoration: item.inPantry ? "line-through" : "none",
+                    }}>
+                      {item.inPantry ? "✓ " : ""}{item.name}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {item.inPantry && (
+                        <span style={{
+                          fontSize: 10, color: "#6B8F5E", fontWeight: 600,
+                          background: "#6B8F5E15", padding: "2px 8px", borderRadius: 8,
+                        }}>in voorraad</span>
+                      )}
+                      {item.count > 1 && (
+                        <span style={{
+                          fontSize: 11, color: "#8B6F47", fontWeight: 600,
+                          background: "#8B6F4715", padding: "2px 8px", borderRadius: 8,
+                        }}>×{item.count}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {groceryList.some((i) => !i.inPantry) && (
+                <button
+                  onClick={() => {
+                    const text = groceryList
+                      .filter((i) => !i.inPantry)
+                      .map((i) => `${i.name}${i.count > 1 ? ` (×${i.count})` : ""}`)
+                      .join("\n");
+                    navigator.clipboard.writeText(text);
+                  }}
+                  style={{
+                    width: "100%", marginTop: 10, padding: "10px", borderRadius: 10,
+                    border: "1.5px solid #D4A574", background: "#D4A57410",
+                    color: "#8B6F47", fontSize: 13, fontWeight: 600,
+                    fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >📋 Kopieer boodschappenlijst</button>
+              )}
             </div>
           )}
         </div>
@@ -305,21 +384,71 @@ export default function WeekPlanner({ user, recipes }) {
             fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
             margin: "0 0 12px", display: "flex", alignItems: "center", gap: 8,
           }}>👥 Planning delen</h4>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <input type="email" value={shareEmail} onChange={(e) => setShareEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sharePlanning()}
-              placeholder="E-mailadres van huisgenoot"
-              style={{
-                flex: 1, padding: "10px 14px", borderRadius: 10,
-                border: "1.5px solid #E2DAD0", background: "#FAF7F2",
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F",
-                outline: "none",
-              }} />
-            <button onClick={sharePlanning} style={{
-              padding: "10px 16px", borderRadius: 10, border: "none",
-              background: "linear-gradient(135deg, #D4A574, #C09060)",
-              color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer",
-            }}>Deel</button>
+          <div style={{ position: "relative", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="email" value={shareEmail} onChange={handleShareEmailChange}
+                onKeyDown={(e) => e.key === "Enter" && sharePlanning()}
+                placeholder="Zoek op e-mailadres..."
+                autoComplete="off"
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: 10,
+                  border: "1.5px solid #E2DAD0", background: "#FAF7F2",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F",
+                  outline: "none",
+                }} />
+              <button onClick={sharePlanning} style={{
+                padding: "10px 16px", borderRadius: 10, border: "none",
+                background: "linear-gradient(135deg, #D4A574, #C09060)",
+                color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer",
+              }}>Deel</button>
+            </div>
+            {userSuggestions.length > 0 && (
+              <div style={{
+                position: "absolute", top: "100%", left: 0, right: 56,
+                marginTop: 4, borderRadius: 12, overflow: "hidden",
+                background: "#FFFCF7", border: "1.5px solid #E2DAD0",
+                boxShadow: "0 8px 24px rgba(139,111,71,0.15)",
+                zIndex: 10,
+              }}>
+                {userSuggestions.map((u) => (
+                  <button key={u.id} onClick={() => shareWithUser(u.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "10px 14px", border: "none",
+                      background: "transparent", cursor: "pointer",
+                      textAlign: "left", transition: "background 0.15s",
+                      borderBottom: "1px solid #EDE8E0",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#FAF7F2"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 10,
+                      background: "linear-gradient(135deg, #D4A574, #C09060)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#fff", fontSize: 13, fontWeight: 700,
+                      fontFamily: "'DM Sans', sans-serif", flexShrink: 0,
+                    }}>{(u.display_name || u.email)[0].toUpperCase()}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {u.display_name && (
+                        <div style={{
+                          fontSize: 13, color: "#3D2E1F", fontWeight: 600,
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}>{u.display_name}</div>
+                      )}
+                      <div style={{
+                        fontSize: 12, color: "#8C7E6F",
+                        fontFamily: "'DM Sans', sans-serif",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>{u.email}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {searchingUsers && (
+              <p style={{ fontSize: 12, color: "#8B6F47", margin: "6px 0 0" }}>Zoeken...</p>
+            )}
           </div>
           {shareStatus && (
             <p style={{
@@ -538,6 +667,67 @@ export default function WeekPlanner({ user, recipes }) {
           </div>
         );
       })}
+
+      {/* Seizoenstip */}
+      {onNavigateToRecipes && (() => {
+        const month = new Date().getMonth();
+        const seasons = {
+          winter: { months: [11, 0, 1], emoji: "❄️", label: "Winter", tip: "Stoofpotten, stamppot, soepen", suggestions: [
+            { label: "Stoofpot", prompt: "Maak een hartige winterse stoofpot" },
+            { label: "Stamppot", prompt: "Maak een klassieke stamppot" },
+            { label: "Soep", prompt: "Maak een verwarmende wintersoep" },
+          ]},
+          lente: { months: [2, 3, 4], emoji: "🌷", label: "Lente", tip: "Asperges, verse salades, lamsgerechten", suggestions: [
+            { label: "Asperges", prompt: "Maak een gerecht met verse asperges" },
+            { label: "Lentesalade", prompt: "Maak een frisse lentesalade" },
+            { label: "Lamsgerecht", prompt: "Maak een lamsgerecht voor de lente" },
+          ]},
+          zomer: { months: [5, 6, 7], emoji: "☀️", label: "Zomer", tip: "BBQ, gazpacho, verse vis, salades", suggestions: [
+            { label: "BBQ", prompt: "Maak een zomers BBQ-gerecht" },
+            { label: "Gazpacho", prompt: "Maak een verfrissende gazpacho" },
+            { label: "Verse vis", prompt: "Maak een licht zomers visgerecht" },
+          ]},
+          herfst: { months: [8, 9, 10], emoji: "🍂", label: "Herfst", tip: "Pompoen, paddenstoelen, wildgerechten", suggestions: [
+            { label: "Pompoen", prompt: "Maak een herfstig pompoengerecht" },
+            { label: "Paddenstoelen", prompt: "Maak een gerecht met paddenstoelen" },
+            { label: "Wild", prompt: "Maak een wildgerecht voor de herfst" },
+          ]},
+        };
+        const season = Object.values(seasons).find((s) => s.months.includes(month));
+        return (
+          <div style={{
+            background: "#FFFCF7", borderRadius: 20, padding: "20px 24px",
+            boxShadow: "0 4px 28px rgba(139,111,71,0.10)", marginTop: 6,
+            border: "1px solid #EDE8E0",
+          }}>
+            <h4 style={{
+              fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
+              margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8,
+            }}>{season.emoji} Seizoenstip</h4>
+            <p style={{
+              fontSize: 13, color: "#8C7E6F", margin: "0 0 14px",
+              fontFamily: "'DM Sans', sans-serif",
+            }}>
+              {season.label}: {season.tip}
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {season.suggestions.map((s) => (
+                <button key={s.label} onClick={() => onNavigateToRecipes(s.prompt)}
+                  style={{
+                    padding: "8px 14px", borderRadius: 10,
+                    border: "1.5px solid #D4A574", background: "#D4A57410",
+                    color: "#8B6F47", fontSize: 12, fontWeight: 600,
+                    fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#D4A57425"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "#D4A57410"; }}
+                >{season.emoji} {s.label}</button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
