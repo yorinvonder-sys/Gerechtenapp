@@ -229,7 +229,7 @@ Categoriseer elk product in een van deze categorieën: Groente & Fruit, Vlees & 
 Antwoord ALLEEN met valid JSON in dit formaat, zonder markdown of backticks:
 {"items":[{"name":"productnaam","category":"categorie","quantity":"geschatte hoeveelheid","confidence":"hoog/middel/laag"}]}` }
         ] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1000 },
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1000, responseMimeType: "application/json" },
       });
 
       clearInterval(statusInterval);
@@ -1143,7 +1143,7 @@ Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn vo
 
 Gebruikerswensen:
 ${userPrompt}` }] }],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 1200 },
+        generationConfig: { temperature: 0.9, maxOutputTokens: 1200, responseMimeType: "application/json" },
       });
       if (data.error) throw new Error(data.error.message || "API fout");
       const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
@@ -1178,7 +1178,7 @@ Keuken: ${suggestion.cuisine}
 
 Context van de gebruiker:
 ${userPrompt}` }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1000, responseMimeType: "application/json" },
       });
       if (data.error) throw new Error(data.error.message || "API fout");
       const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
