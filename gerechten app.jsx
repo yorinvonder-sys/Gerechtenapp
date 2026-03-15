@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./src/supabaseClient";
 import ProfilePage from "./src/ProfilePage.jsx";
+import WeekPlanner from "./src/WeekPlanner.jsx";
 
 const CUISINES = ["Italiaans", "Aziatisch", "Mexicaans", "Frans", "Grieks", "Indiaas", "Japans", "Thais", "Hollands", "Amerikaans", "Midden-Oosters", "Afrikaans"];
 const DIETS = ["Vegetarisch", "Veganistisch", "Glutenvrij", "Lactosevrij", "Koolhydraatarm", "Eiwitrijk"];
@@ -50,8 +51,9 @@ const DEFAULT_VISUAL = { gradient: "linear-gradient(135deg, #8B6F47 0%, #6B5D4F 
 
 const NAV_ITEMS = [
   { id: "recepten", icon: "🍳", label: "Recepten" },
-  { id: "voorraad", icon: "🧊", label: "Voorraad" },
-  { id: "profiel", icon: "👤", label: "Profiel" },
+  { id: "voorraad", icon: "🧊", label: "Voorraadkast" },
+  { id: "weekplanner", icon: "📅", label: "Weekplanner" },
+  { id: "profiel", icon: "⚙️", label: "Instellingen" },
 ];
 
 /* ─── Shared Components ─── */
@@ -1307,6 +1309,10 @@ export default function RecipeApp({ session }) {
           <ProfilePage user={user} profile={profile} onProfileUpdate={(updated) => setProfile(prev => ({ ...prev, ...updated }))} />
         )}
 
+        {activeTab === "weekplanner" && (
+          <WeekPlanner user={user} recipes={recipes} />
+        )}
+
         {activeTab === "recepten" && (
           <>
             {/* Generator */}
@@ -1609,8 +1615,12 @@ export default function RecipeApp({ session }) {
                   transition: "all 0.25s",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
-                  <img src={NAV_ICONS[item.id]} alt={item.label}
-                    style={{ width: 26, height: 26, objectFit: "contain", borderRadius: 4 }} />
+                  {NAV_ICONS[item.id] ? (
+                    <img src={NAV_ICONS[item.id]} alt={item.label}
+                      style={{ width: 26, height: 26, objectFit: "contain", borderRadius: 4 }} />
+                  ) : (
+                    <span style={{ fontSize: 22 }}>{item.icon}</span>
+                  )}
                 </span>
                 <span style={{
                   fontFamily: "'DM Sans', sans-serif",
