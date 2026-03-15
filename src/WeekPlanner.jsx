@@ -49,27 +49,51 @@ export default function WeekPlanner({ user, recipes }) {
   useEffect(() => {
     loadMealPlans();
     loadSharedUsers();
+
+    // Realtime: luister naar wijzigingen van gedeelde gebruikers
+    const channel = supabase
+      .channel("meal_plans_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "meal_plans" }, () => {
+        loadMealPlans();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [weekOffset]);
 
   const loadMealPlans = async () => {
     setLoading(true);
     const startDate = formatDate(weekDates[0]);
     const endDate = formatDate(weekDates[6]);
+
+    // Haal gedeelde gebruiker-IDs op (bidirectioneel)
+    const { data: shares } = await supabase
+      .from("shared_meal_plans")
+      .select("owner_id, shared_with")
+      .or(`owner_id.eq.${user.id},shared_with.eq.${user.id}`);
+
+    const userIds = new Set([user.id]);
+    (shares || []).forEach((s) => {
+      userIds.add(s.owner_id);
+      userIds.add(s.shared_with);
+    });
+
     const { data } = await supabase
       .from("meal_plans")
-      .select("*, recipes(title, cuisine, prep_time)")
+      .select("*, recipes(title, cuisine, prep_time), profiles:user_id(display_name)")
       .gte("date", startDate)
       .lte("date", endDate)
-      .or(`user_id.eq.${user.id}`);
+      .in("user_id", [...userIds]);
     setMealPlans(data || []);
     setLoading(false);
   };
 
   const loadSharedUsers = async () => {
+    // Bidirectioneel: toon zowel mensen die je hebt uitgenodigd als mensen die jou hebben uitgenodigd
     const { data } = await supabase
       .from("shared_meal_plans")
-      .select("shared_with, profiles!shared_meal_plans_shared_with_fkey(display_name)")
-      .eq("owner_id", user.id);
+      .select("owner_id, shared_with, profiles_owner:owner_id(display_name), profiles_shared:shared_with(display_name)")
+      .or(`owner_id.eq.${user.id},shared_with.eq.${user.id}`);
     setSharedUsers(data || []);
   };
 
@@ -105,12 +129,12 @@ export default function WeekPlanner({ user, recipes }) {
   };
 
   const removeMeal = async (date, mealType) => {
+    const meal = getMeal(date, mealType);
+    if (!meal) return;
     await supabase
       .from("meal_plans")
       .delete()
-      .eq("user_id", user.id)
-      .eq("date", formatDate(date))
-      .eq("meal_type", mealType);
+      .eq("id", meal.id);
     await loadMealPlans();
   };
 
@@ -307,13 +331,19 @@ export default function WeekPlanner({ user, recipes }) {
             <div>
               <p style={{ fontSize: 12, color: "#8C7E6F", margin: "0 0 6px", fontWeight: 600 }}>Gedeeld met:</p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {sharedUsers.map((s) => (
-                  <span key={s.shared_with} style={{
-                    padding: "4px 12px", borderRadius: 12, background: "#6B8F5E15",
-                    border: "1px solid #6B8F5E40", color: "#5A7D4E",
-                    fontSize: 12, fontFamily: "'DM Sans', sans-serif",
-                  }}>{s.profiles?.display_name || "Gebruiker"}</span>
-                ))}
+                {sharedUsers.map((s) => {
+                  const isOwner = s.owner_id === user.id;
+                  const name = isOwner
+                    ? (s.profiles_shared?.display_name || "Gebruiker")
+                    : (s.profiles_owner?.display_name || "Gebruiker");
+                  return (
+                    <span key={s.owner_id + s.shared_with} style={{
+                      padding: "4px 12px", borderRadius: 12, background: "#6B8F5E15",
+                      border: "1px solid #6B8F5E40", color: "#5A7D4E",
+                      fontSize: 12, fontFamily: "'DM Sans', sans-serif",
+                    }}>{name}</span>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -395,13 +425,20 @@ export default function WeekPlanner({ user, recipes }) {
                           fontFamily: "'DM Sans', sans-serif",
                         }}>{mt.label}</span>
                         {meal && (
-                          <p style={{
-                            fontSize: 13, color: "#3D2E1F", margin: "2px 0 0",
-                            fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>
-                            {meal.recipes?.title || meal.custom_meal}
-                          </p>
+                          <div>
+                            <p style={{
+                              fontSize: 13, color: "#3D2E1F", margin: "2px 0 0",
+                              fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
+                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            }}>
+                              {meal.recipes?.title || meal.custom_meal}
+                            </p>
+                            {meal.user_id !== user.id && meal.profiles?.display_name && (
+                              <span style={{
+                                fontSize: 10, color: "#A89B8A", fontFamily: "'DM Sans', sans-serif",
+                              }}>door {meal.profiles.display_name}</span>
+                            )}
+                          </div>
                         )}
                         {!meal && !isPicking && (
                           <p style={{
