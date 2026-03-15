@@ -31,12 +31,21 @@ function App() {
   useEffect(() => {
     if (!session) return
     (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", session.user.id)
-        .single()
-      setOnboardingDone(data?.onboarding_completed === true)
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .single()
+        if (error || !data) {
+          // Column or profile doesn't exist yet — skip onboarding
+          setOnboardingDone(true)
+        } else {
+          setOnboardingDone(data.onboarding_completed === true)
+        }
+      } catch {
+        setOnboardingDone(true)
+      }
       setLoading(false)
     })()
   }, [session])
