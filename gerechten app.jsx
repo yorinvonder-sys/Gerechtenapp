@@ -16,20 +16,20 @@ const CAT_EMOJIS = {
 };
 
 const CAT_ICONS = {
-  "Groente & Fruit": "/images/cat-vegetables.jpg",
-  "Vlees & Vis": "/images/cat-meat.jpg",
-  "Zuivel": "/images/cat-dairy.jpg",
-  "Droog & Granen": "/images/cat-grains.jpg",
-  "Kruiden & Specerijen": "/images/cat-herbs.jpg",
-  "Sauzen & Oliën": "/images/cat-sauces.jpg",
-  "Diepvries": "/images/cat-frozen.jpg",
-  "Overig": "/images/cat-other.jpg",
+  "Groente & Fruit": "/images/cat-vegetables.webp",
+  "Vlees & Vis": "/images/cat-meat.webp",
+  "Zuivel": "/images/cat-dairy.webp",
+  "Droog & Granen": "/images/cat-grains.webp",
+  "Kruiden & Specerijen": "/images/cat-herbs.webp",
+  "Sauzen & Oliën": "/images/cat-sauces.webp",
+  "Diepvries": "/images/cat-frozen.webp",
+  "Overig": "/images/cat-other.webp",
 };
 
 const NAV_ICONS = {
-  recepten: "/images/nav-recipes.jpg",
-  voorraad: "/images/nav-pantry.jpg",
-  profiel: "/images/nav-profile.jpg",
+  recepten: "/images/nav-recipes.webp",
+  voorraad: "/images/nav-pantry.webp",
+  profiel: "/images/nav-profile.webp",
 };
 
 const CUISINE_VISUALS = {
@@ -1110,11 +1110,16 @@ export default function RecipeApp({ session }) {
     setError(""); setLoading(true);
     setGenStatus("Receptenmagie aan het brouwen...");
 
-    let userPrompt = `Genereer een recept in het Nederlands. Standaard voor 2 personen.\n`;
+    const servings = profile?.household_size || 2;
+    let userPrompt = `Genereer een recept in het Nederlands. Voor ${servings} personen.\n`;
     if (prompt.trim()) userPrompt += `Verzoek: ${prompt}\n`;
     if (selectedCuisines.length) userPrompt += `Keuken: ${selectedCuisines.join(", ")}\n`;
     if (selectedDiets.length) userPrompt += `Dieet: ${selectedDiets.join(", ")}\n`;
+    else if (profile?.dietary_preferences?.length) userPrompt += `Dieet: ${profile.dietary_preferences.join(", ")}\n`;
     if (selectedTime) userPrompt += `Bereidingstijd: ${selectedTime}\n`;
+    if (profile?.allergies?.length) userPrompt += `BELANGRIJK - Allergieën (gebruik deze ingrediënten NOOIT): ${profile.allergies.join(", ")}\n`;
+    if (profile?.dislikes?.length) userPrompt += `Vermijd deze ingrediënten (gebruiker lust dit niet): ${profile.dislikes.join(", ")}\n`;
+    if (profile?.cooking_level === "beginner") userPrompt += `Houd het recept simpel en beginner-vriendelijk.\n`;
     if (usePantry && pantry.length > 0)
       userPrompt += `\nBelangrijk: Gebruik zoveel mogelijk deze producten die we in huis hebben: ${pantry.map(p => p.name).join(", ")}. Extra ingrediënten mogen als nodig.\n`;
 
@@ -1126,8 +1131,8 @@ export default function RecipeApp({ session }) {
           model: "claude-sonnet-4-6-20250514",
           max_tokens: 1000,
           messages: [{ role: "user", content: userPrompt }],
-          system: `Je bent een creatieve Nederlandse chef-kok. Genereer recepten in het Nederlands, altijd voor 2 personen tenzij anders gevraagd. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
-{"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":2,"ingredients":["ingrediënt 1","ingrediënt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}`
+          system: `Je bent een creatieve Nederlandse chef-kok. Genereer recepten in het Nederlands, standaard voor ${servings} personen tenzij anders gevraagd. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+{"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingrediënt 1","ingrediënt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}`
         }),
       });
 
@@ -1192,8 +1197,18 @@ export default function RecipeApp({ session }) {
         fontFamily: "'Playfair Display', serif", color: "#8B6F47", fontSize: 22
       }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16, animation: "pulse 1.5s infinite" }}>🍳</div>
-          Laden...
+          <div style={{
+            fontSize: 48, marginBottom: 16,
+            animation: "spin-pan 1.2s ease-in-out infinite",
+            display: "inline-block"
+          }}>🍳</div>
+          <style>{`
+            @keyframes spin-pan {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div>Laden...</div>
         </div>
       </div>
     );
@@ -1221,17 +1236,19 @@ export default function RecipeApp({ session }) {
 
       {/* Header */}
       <div style={{
-        backgroundImage: "linear-gradient(to bottom, rgba(44,24,16,0.72) 0%, rgba(74,50,40,0.82) 50%, rgba(44,24,16,0.92) 100%), url('/images/hero-cooking.jpg')",
+        backgroundImage: "linear-gradient(to bottom, rgba(44,24,16,0.72) 0%, rgba(74,50,40,0.82) 50%, rgba(44,24,16,0.92) 100%), url('/images/hero-cooking.webp')",
         backgroundSize: "cover", backgroundPosition: "center 40%",
         padding: "36px 24px 28px", position: "relative", overflow: "hidden",
       }}>
         <div style={{ maxWidth: 520, margin: "0 auto", position: "relative" }}>
-          {/* Titel + subtitel gecentreerd */}
+          {/* Logo + subtitel gecentreerd */}
           <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <h1 style={{
-              fontFamily: "'Playfair Display', serif", fontSize: 32, color: "#F5EDE3",
-              margin: 0, letterSpacing: -0.5,
-            }}>Onze Recepten</h1>
+            <img src="/images/logo.webp" alt="Onze Recepten"
+              style={{
+                width: 180, height: "auto", display: "block", margin: "0 auto 4px",
+                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))",
+              }}
+            />
             <p style={{
               fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(197,186,168,0.7)",
               margin: "6px 0 0", letterSpacing: 0.5,
@@ -1314,8 +1331,53 @@ export default function RecipeApp({ session }) {
                 Nieuw recept
               </h2>
 
+              {/* Snelkeuze suggesties */}
+              {(() => {
+                const hour = new Date().getHours();
+                const mealSuggestion = hour < 10 ? "Ontbijt" : hour < 14 ? "Lunch" : hour < 17 ? "Tussendoortje" : "Diner";
+                const mealEmoji = hour < 10 ? "🥐" : hour < 14 ? "🥗" : hour < 17 ? "🍪" : "🍽️";
+                const quickPicks = [
+                  { label: mealSuggestion, emoji: mealEmoji, prompt: `Een lekker ${mealSuggestion.toLowerCase()} gerecht` },
+                  { label: "Iets snels", emoji: "⚡", prompt: "Een snel en makkelijk gerecht onder 15 minuten" },
+                  { label: "Comfort food", emoji: "🫕", prompt: "Een lekker comfort food gerecht, hartig en warm" },
+                  { label: "Gezond", emoji: "🥦", prompt: "Een gezond en voedzaam gerecht met veel groenten" },
+                  { label: "Budget", emoji: "💰", prompt: "Een lekker maar goedkoop gerecht met simpele ingrediënten" },
+                ];
+                const cuisinePicks = (profile?.favorite_cuisine || []).slice(0, 3).map(c => {
+                  const vis = CUISINE_VISUALS[c] || DEFAULT_VISUAL;
+                  return { label: c, emoji: vis.emoji, prompt: `Een lekker ${c.toLowerCase()} gerecht` };
+                });
+                const allPicks = [...quickPicks, ...cuisinePicks];
+                return (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{
+                      display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4,
+                      scrollbarWidth: "none", msOverflowStyle: "none",
+                    }}>
+                      {allPicks.map((pick) => (
+                        <button key={pick.label} onClick={() => { setPrompt(pick.prompt); }}
+                          style={{
+                            padding: "8px 14px", borderRadius: 20,
+                            border: prompt === pick.prompt ? "2px solid #8B6F47" : "1.5px solid #E2DAD0",
+                            background: prompt === pick.prompt ? "#8B6F4712" : "#FAF7F2",
+                            color: prompt === pick.prompt ? "#8B6F47" : "#6B5D4F",
+                            fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+                            fontWeight: prompt === pick.prompt ? 600 : 400,
+                            cursor: "pointer", transition: "all 0.2s",
+                            whiteSpace: "nowrap", flexShrink: 0,
+                            display: "flex", alignItems: "center", gap: 5,
+                          }}
+                        >
+                          <span>{pick.emoji}</span> {pick.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                placeholder={`Wat wil je eten? Bijv. "Een snelle pasta met romige saus"...`}
+                placeholder={`Of typ zelf wat je wilt eten...`}
                 rows={3}
                 style={{
                   width: "100%", padding: "14px 16px", borderRadius: 12,
@@ -1479,7 +1541,7 @@ export default function RecipeApp({ session }) {
                 background: "#FFFCF7", borderRadius: 20, border: "1px solid #EDE8E0",
                 boxShadow: "0 2px 16px rgba(139,111,71,0.06)",
               }}>
-                <img src="/images/empty-cookbook.jpg" alt="Leeg kookboek"
+                <img src="/images/empty-cookbook.webp" alt="Leeg kookboek"
                   style={{
                     width: 200, height: 200, objectFit: "cover", borderRadius: 16,
                     margin: "0 auto 20px", display: "block",
