@@ -15,12 +15,12 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + " food dish")}&per_page=1&orientation=landscape`,
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`,
       { headers: { Authorization: apiKey } }
     );
 
     const data = await response.json();
-    const imageUrl = data.photos?.[0]?.src?.medium || null;
+    const imageUrl = data.photos?.[0]?.src?.large || data.photos?.[0]?.src?.medium || null;
 
     res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
     return res.status(200).json({ url: imageUrl });

@@ -1140,8 +1140,8 @@ export default function RecipeApp({ session }) {
     try {
       const data = await geminiCall({
         contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Bedenk 5 VERSCHILLENDE receptideeën in het Nederlands op basis van de wensen. Zorg voor variatie in keuken, bereidingswijze en smaakprofiel. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
-[{"title":"naam gerecht","description":"korte appetijt-opwekkende beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","imageQuery":"english search term for this specific dish for image search"},{"title":"..."},...]
-Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn voor het gerecht (bijv. "pad thai noodles", "mushroom risotto").
+[{"title":"naam gerecht","description":"korte appetijt-opwekkende beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","imageQuery":"very specific english photo search term"},{"title":"..."},...]
+Geef precies 5 items. BELANGRIJK voor imageQuery: dit wordt gebruikt om een foto te zoeken op Pexels. Gebruik de EXACTE Engelse naam van het gerecht zoals het er op een bord uitziet. Voorbeelden: "stamppot mashed potatoes with sausage dutch", "smash burger with melted cheese", "greek gyros pita wrap", "pad thai noodles shrimp". Wees zo specifiek mogelijk over hoe het gerecht eruitziet, niet alleen de naam.
 
 Gebruikerswensen:
 ${userPrompt}` }] }],
@@ -1164,9 +1164,9 @@ ${userPrompt}` }] }],
           const pexelsKey = import.meta.env.VITE_PEXELS_API_KEY;
           let imgUrl = null;
           if (pexelsKey) {
-            const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q + " food dish")}&per_page=1&orientation=landscape`, { headers: { Authorization: pexelsKey } });
+            const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=3&orientation=landscape`, { headers: { Authorization: pexelsKey } });
             const d = await r.json();
-            imgUrl = d.photos?.[0]?.src?.medium || null;
+            imgUrl = d.photos?.[0]?.src?.large || d.photos?.[0]?.src?.medium || null;
           } else {
             const r = await fetch(`/api/pexels?q=${encodeURIComponent(q)}`);
             const d = await r.json();
