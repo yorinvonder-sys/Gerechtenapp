@@ -1007,6 +1007,9 @@ export default function RecipeApp({ session }) {
   const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState("");
   const [genStatus, setGenStatus] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [choosingRecipe, setChoosingRecipe] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -1104,16 +1107,9 @@ export default function RecipeApp({ session }) {
     return "Recept gedeeld!";
   };
 
-  const generateRecipe = async () => {
-    if (!prompt.trim() && selectedCuisines.length === 0 && !(usePantry && pantry.length > 0)) {
-      setError("Voer een beschrijving in, kies een keuken, of gebruik de voorraadkast!");
-      return;
-    }
-    setError(""); setLoading(true);
-    setGenStatus("Receptenmagie aan het brouwen...");
-
+  const buildUserPrompt = () => {
     const servings = profile?.household_size || 2;
-    let userPrompt = `Genereer een recept in het Nederlands. Voor ${servings} personen.\n`;
+    let userPrompt = `Voor ${servings} personen.\n`;
     if (prompt.trim()) userPrompt += `Verzoek: ${prompt}\n`;
     if (selectedCuisines.length) userPrompt += `Keuken: ${selectedCuisines.join(", ")}\n`;
     if (selectedDiets.length) userPrompt += `Dieet: ${selectedDiets.join(", ")}\n`;
@@ -1124,6 +1120,55 @@ export default function RecipeApp({ session }) {
     if (profile?.cooking_level === "beginner") userPrompt += `Houd het recept simpel en beginner-vriendelijk.\n`;
     if (usePantry && pantry.length > 0)
       userPrompt += `\nBelangrijk: Gebruik zoveel mogelijk deze producten die we in huis hebben: ${pantry.map(p => p.name).join(", ")}. Extra ingrediënten mogen als nodig.\n`;
+    return userPrompt;
+  };
+
+  const generateRecipe = async () => {
+    if (!prompt.trim() && selectedCuisines.length === 0 && !(usePantry && pantry.length > 0)) {
+      setError("Voer een beschrijving in, kies een keuken, of gebruik de voorraadkast!");
+      return;
+    }
+    setError(""); setLoading(true); setSuggestions([]);
+    setGenStatus("Receptideeën bedenken...");
+
+    const userPrompt = buildUserPrompt();
+    const servings = profile?.household_size || 2;
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6-20250514",
+          max_tokens: 1200,
+          messages: [{ role: "user", content: userPrompt }],
+          system: `Je bent een creatieve Nederlandse chef-kok. Bedenk 5 VERSCHILLENDE receptideeën in het Nederlands op basis van de wensen. Zorg voor variatie in keuken, bereidingswijze en smaakprofiel. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+[{"title":"naam gerecht","description":"korte appetijt-opwekkende beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","imageQuery":"english search term for this specific dish for image search"},{"title":"..."},...]
+Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn voor het gerecht (bijv. "pad thai noodles", "mushroom risotto").`
+        }),
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message || "API fout");
+      const text = data.content?.map(c => c.text || "").join("") || "";
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Geen suggesties ontvangen");
+      setSuggestions(parsed.slice(0, 5));
+      setChoosingRecipe(true);
+      setGenStatus("");
+    } catch (err) {
+      setError("Oeps! " + (err.message || "Er ging iets mis.")); setGenStatus("");
+    }
+    setLoading(false);
+  };
+
+  const pickSuggestion = async (suggestion) => {
+    setLoading(true); setChoosingRecipe(false);
+    setGenStatus("Volledig recept uitwerken...");
+
+    const servings = profile?.household_size || 2;
+    const userPrompt = buildUserPrompt();
 
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1132,8 +1177,8 @@ export default function RecipeApp({ session }) {
         body: JSON.stringify({
           model: "claude-sonnet-4-6-20250514",
           max_tokens: 1000,
-          messages: [{ role: "user", content: userPrompt }],
-          system: `Je bent een creatieve Nederlandse chef-kok. Genereer recepten in het Nederlands, standaard voor ${servings} personen tenzij anders gevraagd. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+          messages: [{ role: "user", content: `Werk het volgende receptidee volledig uit:\n\nGerecht: ${suggestion.title}\nBeschrijving: ${suggestion.description}\nKeuken: ${suggestion.cuisine}\n\nContext van de gebruiker:\n${userPrompt}` }],
+          system: `Je bent een creatieve Nederlandse chef-kok. Werk het gegeven receptidee uit tot een volledig recept in het Nederlands, voor ${servings} personen. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
 {"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingrediënt 1","ingrediënt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}`
         }),
       });
@@ -1153,7 +1198,7 @@ export default function RecipeApp({ session }) {
       if (saved) {
         setRecipes(prev => [{ ...newRecipe, id: saved.id, isOwn: true }, ...prev]);
       }
-      setPrompt(""); setSelectedCuisines([]); setSelectedDiets([]); setSelectedTime(""); setUsePantry(false); setGenStatus("");
+      setPrompt(""); setSelectedCuisines([]); setSelectedDiets([]); setSelectedTime(""); setUsePantry(false); setSuggestions([]); setGenStatus("");
     } catch (err) {
       setError("Oeps! " + (err.message || "Er ging iets mis.")); setGenStatus("");
     }
@@ -1349,7 +1394,8 @@ export default function RecipeApp({ session }) {
                   { label: "Gezond", emoji: "🥦", prompt: "Een gezond en voedzaam gerecht met veel groenten" },
                   { label: "Budget", emoji: "💰", prompt: "Een lekker maar goedkoop gerecht met simpele ingrediënten" },
                 ];
-                const cuisinePicks = (profile?.favorite_cuisine || []).slice(0, 3).map(c => {
+                const favCuisineArr = Array.isArray(profile?.favorite_cuisine) ? profile.favorite_cuisine : [];
+                const cuisinePicks = favCuisineArr.slice(0, 3).map(c => {
                   const vis = CUISINE_VISUALS[c] || DEFAULT_VISUAL;
                   return { label: c, emoji: vis.emoji, prompt: `Een lekker ${c.toLowerCase()} gerecht` };
                 });
@@ -1467,31 +1513,134 @@ export default function RecipeApp({ session }) {
 
               {error && <p style={{ color: "#C85A3D", fontSize: 13, margin: "8px 0 0", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{error}</p>}
 
-              <button onClick={generateRecipe} disabled={loading}
-                style={{
-                  marginTop: 16, width: "100%", padding: "16px", borderRadius: 14, border: "none",
-                  background: loading
-                    ? "linear-gradient(90deg, #D4A574, #C09060, #D4A574)"
-                    : "linear-gradient(135deg, #D4A574 0%, #C09060 50%, #A67B50 100%)",
-                  backgroundSize: loading ? "200% 100%" : "100% 100%",
-                  animation: loading ? "shimmer 1.5s linear infinite" : "none",
-                  color: "#fff", fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 15, fontWeight: 700, cursor: loading ? "wait" : "pointer",
-                  transition: "all 0.3s",
-                  boxShadow: loading ? "0 4px 20px rgba(212,165,116,0.3)" : "0 6px 24px rgba(212,165,116,0.35)",
-                  letterSpacing: 0.3,
-                }}
-                onMouseEnter={(e) => !loading && (e.target.style.boxShadow = "0 8px 32px rgba(212,165,116,0.45)")}
-                onMouseLeave={(e) => !loading && (e.target.style.boxShadow = "0 6px 24px rgba(212,165,116,0.35)")}
-              >
-                {loading ? `🍳 ${genStatus || "Bezig..."}` : usePantry ? "🧊 Genereer met voorraad" : "✨ Genereer recept"}
-              </button>
-              <p style={{
-                fontSize: 11, color: "#B5A999", textAlign: "center", margin: "10px 0 0",
-                fontFamily: "'DM Sans', sans-serif",
-              }}>
-                Recept wordt toegevoegd als {profile?.display_name || user.email} · ⌘+Enter als sneltoets
-              </p>
+              {/* Suggestion Cards */}
+              {choosingRecipe && suggestions.length > 0 && (
+                <div style={{ marginTop: 16, animation: "fadeIn 0.4s ease" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#3D2E1F", margin: 0, fontFamily: "'Playfair Display', serif" }}>
+                      Kies een gerecht
+                    </p>
+                    <button onClick={() => { setChoosingRecipe(false); setSuggestions([]); }}
+                      style={{ background: "none", border: "none", fontSize: 12, color: "#A89B8A", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                    >Annuleren ✕</button>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 12px", fontFamily: "'DM Sans', sans-serif" }}>
+                    Swipe of klik om te kiezen →
+                  </p>
+                  <div style={{
+                    display: "flex", gap: 14, overflowX: "auto", paddingBottom: 12,
+                    scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch",
+                    scrollbarWidth: "none", msOverflowStyle: "none",
+                  }}>
+                    {suggestions.map((s, i) => {
+                      const vis = CUISINE_VISUALS[s.cuisine] || DEFAULT_VISUAL;
+                      return (
+                        <button key={i} onClick={() => pickSuggestion(s)}
+                          style={{
+                            flex: "0 0 260px", scrollSnapAlign: "center",
+                            borderRadius: 18, border: "none", overflow: "hidden",
+                            background: "#FFFCF7", cursor: "pointer",
+                            boxShadow: "0 4px 20px rgba(139,111,71,0.12)",
+                            transition: "all 0.3s ease", textAlign: "left",
+                            display: "flex", flexDirection: "column",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "translateY(-4px)";
+                            e.currentTarget.style.boxShadow = "0 8px 32px rgba(139,111,71,0.2)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "0 4px 20px rgba(139,111,71,0.12)";
+                          }}
+                        >
+                          {/* Image */}
+                          <div style={{
+                            height: 150, width: "100%", position: "relative",
+                            background: vis.gradient,
+                            overflow: "hidden",
+                          }}>
+                            <img
+                              src={`https://source.unsplash.com/520x300/?${encodeURIComponent(s.imageQuery || s.title)},food`}
+                              alt={s.title}
+                              style={{
+                                width: "100%", height: "100%", objectFit: "cover",
+                                opacity: 0, transition: "opacity 0.4s ease",
+                              }}
+                              onLoad={(e) => e.target.style.opacity = 1}
+                              onError={(e) => e.target.style.display = "none"}
+                            />
+                            {/* Gradient overlay bottom */}
+                            <div style={{
+                              position: "absolute", bottom: 0, left: 0, right: 0, height: 60,
+                              background: "linear-gradient(transparent, rgba(0,0,0,0.4))",
+                            }} />
+                            {/* Cuisine badge */}
+                            <div style={{
+                              position: "absolute", top: 10, right: 10,
+                              background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)",
+                              borderRadius: 20, padding: "4px 10px",
+                              fontSize: 11, fontWeight: 600, color: "#6B5D4F",
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}>{vis.emoji} {s.cuisine}</div>
+                            {/* Prep time badge */}
+                            <div style={{
+                              position: "absolute", bottom: 10, left: 10,
+                              background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)",
+                              borderRadius: 20, padding: "4px 10px",
+                              fontSize: 11, fontWeight: 500, color: "#6B5D4F",
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}>⏱ {s.prepTime}</div>
+                          </div>
+                          {/* Content */}
+                          <div style={{ padding: "14px 16px 16px" }}>
+                            <h3 style={{
+                              margin: "0 0 6px", fontSize: 15, fontWeight: 700,
+                              color: "#3D2E1F", fontFamily: "'Playfair Display', serif",
+                              lineHeight: 1.3,
+                            }}>{s.title}</h3>
+                            <p style={{
+                              margin: 0, fontSize: 12.5, color: "#8C7E6F",
+                              fontFamily: "'DM Sans', sans-serif", lineHeight: 1.4,
+                              display: "-webkit-box", WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical", overflow: "hidden",
+                            }}>{s.description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!choosingRecipe && (
+                <>
+                  <button onClick={generateRecipe} disabled={loading}
+                    style={{
+                      marginTop: 16, width: "100%", padding: "16px", borderRadius: 14, border: "none",
+                      background: loading
+                        ? "linear-gradient(90deg, #D4A574, #C09060, #D4A574)"
+                        : "linear-gradient(135deg, #D4A574 0%, #C09060 50%, #A67B50 100%)",
+                      backgroundSize: loading ? "200% 100%" : "100% 100%",
+                      animation: loading ? "shimmer 1.5s linear infinite" : "none",
+                      color: "#fff", fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 15, fontWeight: 700, cursor: loading ? "wait" : "pointer",
+                      transition: "all 0.3s",
+                      boxShadow: loading ? "0 4px 20px rgba(212,165,116,0.3)" : "0 6px 24px rgba(212,165,116,0.35)",
+                      letterSpacing: 0.3,
+                    }}
+                    onMouseEnter={(e) => !loading && (e.target.style.boxShadow = "0 8px 32px rgba(212,165,116,0.45)")}
+                    onMouseLeave={(e) => !loading && (e.target.style.boxShadow = "0 6px 24px rgba(212,165,116,0.35)")}
+                  >
+                    {loading ? `🍳 ${genStatus || "Bezig..."}` : usePantry ? "🧊 Genereer met voorraad" : "✨ Genereer recept"}
+                  </button>
+                  <p style={{
+                    fontSize: 11, color: "#B5A999", textAlign: "center", margin: "10px 0 0",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}>
+                    Recept wordt toegevoegd als {profile?.display_name || user.email} · ⌘+Enter als sneltoets
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Filters */}
