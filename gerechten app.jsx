@@ -738,13 +738,19 @@ function PantrySection({ pantry, onAdd, onAddMultiple, onRemove, onClear }) {
 
 /* ─── Recipe Card ─── */
 
-function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShare }) {
+function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShare, onMarkCooked, collections, onAddToCollection, onRemoveFromCollection, onAddToPlanner }) {
   const [expanded, setExpanded] = useState(false);
+  const [showPlannerPicker, setShowPlannerPicker] = useState(false);
+  const [selectedDays, setSelectedDays] = useState([]);
+  const [selectedMealType, setSelectedMealType] = useState("diner");
+  const [plannerStatus, setPlannerStatus] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
   const [shareStatus, setShareStatus] = useState("");
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
   const visual = CUISINE_VISUALS[recipe.cuisine] || DEFAULT_VISUAL;
+  const daysSinceCooked = recipe.lastCookedAt ? Math.floor((Date.now() - new Date(recipe.lastCookedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
 
   return (
     <div style={{
@@ -839,6 +845,16 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
           {recipe.servings && (
             <span style={{ fontSize: 12, color: "#8C7E6F", fontFamily: "'DM Sans', sans-serif" }}>👥 {recipe.servings}p</span>
           )}
+          <span style={{
+            fontSize: 11, color: daysSinceCooked !== null ? "#6B8F5E" : "#B5A999",
+            fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
+            background: daysSinceCooked !== null ? "#6B8F5E12" : "#F5F2ED",
+            borderRadius: 8, padding: "2px 8px",
+          }}>
+            {daysSinceCooked !== null
+              ? daysSinceCooked === 0 ? "🍳 Vandaag gekookt" : `🍳 ${daysSinceCooked}d geleden`
+              : "Nog nooit gekookt"}
+          </span>
         </div>
 
         <p style={{
@@ -856,17 +872,87 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
           </div>
         </div>
 
-        <button onClick={() => setExpanded(!expanded)}
-          style={{
-            background: expanded ? "#8B6F4710" : "transparent", border: "1.5px solid #E2DAD0",
-            color: "#8B6F47", borderRadius: 12, width: "100%",
-            fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: "pointer",
-            padding: "10px 16px", fontWeight: 600, display: "flex", alignItems: "center",
-            justifyContent: "center", gap: 6, transition: "all 0.2s",
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => {
+            if (!showPlannerPicker) {
+              const t = new Date(); t.setHours(0,0,0,0);
+              setSelectedDays([t.toISOString().split("T")[0]]);
+              setSelectedMealType("diner");
+              setPlannerStatus("");
+            }
+            setShowPlannerPicker(!showPlannerPicker);
           }}
-          onMouseEnter={(e) => { e.target.style.background = "#8B6F4715"; e.target.style.borderColor = "#8B6F47"; }}
-          onMouseLeave={(e) => { e.target.style.background = expanded ? "#8B6F4710" : "transparent"; e.target.style.borderColor = "#E2DAD0"; }}
-        >{expanded ? "Verberg details ▲" : "📖 Bekijk volledig recept ▼"}</button>
+            style={{
+              background: showPlannerPicker ? "#6B8F5E10" : "transparent",
+              border: showPlannerPicker ? "2px solid #6B8F5E" : "1.5px solid #E2DAD0",
+              borderRadius: 12, padding: "10px 14px", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "all 0.2s", flexShrink: 0,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#6B8F5E"; e.currentTarget.style.background = "#6B8F5E08"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = showPlannerPicker ? "#6B8F5E" : "#E2DAD0"; e.currentTarget.style.background = showPlannerPicker ? "#6B8F5E10" : "transparent"; }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
+              <rect x="3" y="4" width="18" height="17" rx="3" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" fill="none" />
+              <line x1="3" y1="9" x2="21" y2="9" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.5" />
+              <line x1="8" y1="2.5" x2="8" y2="5.5" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
+              <line x1="16" y1="2.5" x2="16" y2="5.5" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
+              <line x1="12" y1="13" x2="12" y2="18" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
+              <line x1="9.5" y1="15.5" x2="14.5" y2="15.5" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+          <button onClick={() => setExpanded(!expanded)}
+            style={{
+              flex: 1, background: expanded ? "#8B6F4710" : "transparent", border: "1.5px solid #E2DAD0",
+              color: "#8B6F47", borderRadius: 12,
+              fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: "pointer",
+              padding: "10px 16px", fontWeight: 600, display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 6, transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => { e.target.style.background = "#8B6F4715"; e.target.style.borderColor = "#8B6F47"; }}
+            onMouseLeave={(e) => { e.target.style.background = expanded ? "#8B6F4710" : "transparent"; e.target.style.borderColor = "#E2DAD0"; }}
+          >{expanded ? "Verberg details ▲" : "📖 Bekijk volledig recept ▼"}</button>
+        </div>
+
+        {showPlannerPicker && (() => {
+          const _t = new Date(); _t.setHours(0, 0, 0, 0);
+          const _dow = _t.getDay();
+          const _mon = new Date(_t); _mon.setDate(_t.getDate() - (_dow === 0 ? 6 : _dow - 1));
+          const _wk = Array.from({ length: 7 }, (_, i) => { const d = new Date(_mon); d.setDate(_mon.getDate() + i); return d; });
+          const _nM = new Date(_mon); _nM.setDate(_mon.getDate() + 7);
+          const _nWk = Array.from({ length: 7 }, (_, i) => { const d = new Date(_nM); d.setDate(_nM.getDate() + i); return d; });
+          const _ds = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
+          const _mts = [{id:"ontbijt",l:"Ontbijt",e:"🥐"},{id:"lunch",l:"Lunch",e:"🥗"},{id:"diner",l:"Diner",e:"🍽️"}];
+          const _tog = (s) => setSelectedDays(p => p.includes(s) ? p.filter(x=>x!==s) : [...p, s]);
+          const _isT = (d) => d.getDate()===_t.getDate()&&d.getMonth()===_t.getMonth()&&d.getFullYear()===_t.getFullYear();
+          const _isP = (d) => d < _t;
+          const renderDay = (d, dis) => { const s=d.toISOString().split("T")[0]; const sel=selectedDays.includes(s); return (
+            <button key={s} onClick={()=>!dis&&_tog(s)} style={{flex:1,padding:"6px 2px",borderRadius:10,border:"none",background:sel?"linear-gradient(135deg,#6B8F5E,#5A7D4E)":_isT(d)?"#D4A57420":"transparent",color:sel?"#fff":dis?"#D5CFC6":"#3D2E1F",fontSize:11,fontFamily:"'DM Sans',sans-serif",fontWeight:600,cursor:dis?"default":"pointer",transition:"all 0.15s",display:"flex",flexDirection:"column",alignItems:"center",gap:1,opacity:dis?0.5:1}}>
+              <span style={{fontSize:9,fontWeight:700,opacity:0.7}}>{_ds[d.getDay()]}</span><span>{d.getDate()}</span>
+            </button>);};
+          return (
+            <div style={{marginTop:8,padding:"16px",borderRadius:14,background:"#FAF7F2",border:"1.5px solid #6B8F5E40",animation:"fadeIn 0.2s ease"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="3" stroke="#5A7D4E" strokeWidth="2" fill="none"/><line x1="3" y1="9" x2="21" y2="9" stroke="#5A7D4E" strokeWidth="1.5"/></svg>
+                <span style={{fontFamily:"'Playfair Display',serif",fontSize:14,color:"#3D2E1F",fontWeight:600}}>Inplannen</span>
+                <span style={{fontSize:11,color:"#A89B8A",fontFamily:"'DM Sans',sans-serif",marginLeft:"auto"}}>Selecteer dag(en)</span>
+              </div>
+              <div style={{display:"flex",gap:6,marginBottom:12}}>
+                {_mts.map(mt=><button key={mt.id} onClick={()=>setSelectedMealType(mt.id)} style={{flex:1,padding:"7px 6px",borderRadius:10,border:selectedMealType===mt.id?"2px solid #6B8F5E":"1.5px solid #E2DAD0",background:selectedMealType===mt.id?"#6B8F5E10":"transparent",color:selectedMealType===mt.id?"#5A7D4E":"#8C7E6F",fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{mt.e} {mt.l}</button>)}
+              </div>
+              <p style={{fontSize:10,color:"#A89B8A",fontFamily:"'DM Sans',sans-serif",margin:"0 0 4px",fontWeight:600}}>Deze week</p>
+              <div style={{display:"flex",gap:4,marginBottom:8}}>{_wk.map(d=>renderDay(d, _isP(d)&&!_isT(d)))}</div>
+              <p style={{fontSize:10,color:"#A89B8A",fontFamily:"'DM Sans',sans-serif",margin:"0 0 4px",fontWeight:600}}>Volgende week</p>
+              <div style={{display:"flex",gap:4,marginBottom:12}}>{_nWk.map(d=>renderDay(d, false))}</div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={async()=>{if(!selectedDays.length)return;setPlannerStatus("Inplannen...");await onAddToPlanner(recipe.id,selectedDays,selectedMealType);setPlannerStatus("Ingepland voor "+selectedDays.length+" dag"+(selectedDays.length>1?"en":"")+"!");setTimeout(()=>{setShowPlannerPicker(false);setPlannerStatus("");},1500);}} disabled={!selectedDays.length} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:selectedDays.length?"linear-gradient(135deg,#6B8F5E,#5A7D4E)":"#E2DAD0",color:selectedDays.length?"#fff":"#A89B8A",fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:selectedDays.length?"pointer":"default",transition:"all 0.2s"}}>
+                  {plannerStatus||(selectedDays.length===0?"Selecteer dag(en)":"Inplannen ("+selectedDays.length+" dag"+(selectedDays.length>1?"en":"")+")")}
+                </button>
+                <button onClick={()=>setShowPlannerPicker(false)} style={{padding:"10px 14px",borderRadius:10,border:"1.5px solid #E2DAD0",background:"transparent",color:"#8C7E6F",fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>Annuleer</button>
+              </div>
+            </div>
+          );
+        })()}
 
         {expanded && (
           <div style={{ marginTop: 16, animation: "fadeIn 0.3s ease" }}>
@@ -979,6 +1065,66 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
                 )}
               </div>
             )}
+
+            {/* Gekookt button */}
+            <button onClick={() => onMarkCooked?.(recipe.id)}
+              style={{
+                marginTop: 12, width: "100%", padding: "12px 16px", borderRadius: 12,
+                border: "1.5px solid #6B8F5E", background: "#6B8F5E10",
+                color: "#6B8F5E", fontFamily: "'DM Sans', sans-serif", fontSize: 14,
+                fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "center", gap: 8, transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#6B8F5E"; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#6B8F5E10"; e.currentTarget.style.color = "#6B8F5E"; }}
+            >✅ Gekookt!</button>
+
+            {/* Collection picker */}
+            {collections && collections.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <button onClick={() => setShowCollectionPicker(!showCollectionPicker)}
+                  style={{
+                    width: "100%", padding: "10px 16px", borderRadius: 12,
+                    border: "1.5px solid #D5CEC4", background: showCollectionPicker ? "#8B6F4708" : "transparent",
+                    color: "#8B6F47", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                    fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  }}>
+                  📂 {showCollectionPicker ? "Sluit collecties" : "Toevoegen aan collectie"}
+                </button>
+                {showCollectionPicker && (
+                  <div style={{
+                    marginTop: 8, display: "flex", flexDirection: "column", gap: 6,
+                    animation: "fadeIn 0.2s ease",
+                  }}>
+                    {collections.map(col => {
+                      const isInCol = col.recipeIds?.includes(recipe.id);
+                      return (
+                        <button key={col.id}
+                          onClick={() => isInCol
+                            ? onRemoveFromCollection?.(col.id, recipe.id)
+                            : onAddToCollection?.(col.id, recipe.id)
+                          }
+                          style={{
+                            padding: "10px 14px", borderRadius: 10,
+                            border: isInCol ? "2px solid #6B8F5E" : "1.5px solid #E2DAD0",
+                            background: isInCol ? "#6B8F5E10" : "#FAF7F2",
+                            color: isInCol ? "#6B8F5E" : "#3D2E1F",
+                            fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                            fontWeight: isInCol ? 600 : 400, cursor: "pointer",
+                            textAlign: "left", transition: "all 0.2s",
+                            display: "flex", alignItems: "center", gap: 8,
+                          }}
+                        >
+                          <span>{isInCol ? "✓" : "+"}</span>
+                          {col.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1020,15 +1166,17 @@ export default function RecipeApp({ session }) {
   const [newCollectionName, setNewCollectionName] = useState("");
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(null);
+  const [sortBy, setSortBy] = useState("");
 
   useEffect(() => {
     (async () => {
       try {
-        const [recipesRes, pantryRes, profileRes, sharedRes] = await Promise.all([
+        const [recipesRes, pantryRes, profileRes, sharedRes, collectionsRes] = await Promise.all([
           supabase.from("recipes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
           supabase.from("pantry_items").select("*").eq("user_id", user.id),
           supabase.from("profiles").select("*").eq("id", user.id).single(),
           supabase.from("shared_recipes").select("recipe_id, recipes(*)").eq("shared_with", user.id),
+          supabase.from("recipe_collections").select("*, recipe_collection_items(recipe_id)").eq("user_id", user.id).order("created_at", { ascending: false }),
         ]);
         if (recipesRes.data) {
           const ownRecipes = recipesRes.data.map(r => ({
@@ -1036,7 +1184,7 @@ export default function RecipeApp({ session }) {
             prepTime: r.prep_time, servings: r.servings, ingredients: r.ingredients,
             steps: r.steps, tips: r.tips, addedBy: r.added_by,
             favorite: r.favorite, rating: r.rating, tags: r.tags,
-            usedPantry: r.used_pantry, createdAt: r.created_at, isOwn: true,
+            usedPantry: r.used_pantry, createdAt: r.created_at, lastCookedAt: r.last_cooked_at, isOwn: true,
           }));
           const sharedRecipes = (sharedRes.data || [])
             .filter(s => s.recipes)
@@ -1046,12 +1194,16 @@ export default function RecipeApp({ session }) {
               ingredients: s.recipes.ingredients, steps: s.recipes.steps, tips: s.recipes.tips,
               addedBy: s.recipes.added_by, favorite: s.recipes.favorite, rating: s.recipes.rating,
               tags: s.recipes.tags, usedPantry: s.recipes.used_pantry, createdAt: s.recipes.created_at,
-              isShared: true,
+              lastCookedAt: s.recipes.last_cooked_at, isShared: true,
             }));
           setRecipes([...ownRecipes, ...sharedRecipes]);
         }
         if (pantryRes.data) setPantry(pantryRes.data.map(p => ({ id: p.id, name: p.name, category: p.category, quantity: p.quantity })));
         if (profileRes.data) setProfile(profileRes.data);
+        if (collectionsRes.data) setCollections(collectionsRes.data.map(c => ({
+          id: c.id, name: c.name, createdAt: c.created_at,
+          recipeIds: (c.recipe_collection_items || []).map(i => i.recipe_id),
+        })));
       } catch (e) { console.log("Loading:", e); }
       setStorageLoading(false);
     })();
@@ -1073,9 +1225,72 @@ export default function RecipeApp({ session }) {
     if ("favorite" in updates) dbUpdates.favorite = updates.favorite;
     if ("rating" in updates) dbUpdates.rating = updates.rating;
     if ("tags" in updates) dbUpdates.tags = updates.tags;
+    if ("lastCookedAt" in updates) dbUpdates.last_cooked_at = updates.lastCookedAt;
     await supabase.from("recipes").update(dbUpdates).eq("id", id).eq("user_id", user.id);
     setRecipes(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
   }, [user.id]);
+
+  const markAsCooked = (id) => {
+    updateRecipeField(id, { lastCookedAt: new Date().toISOString() });
+  };
+
+  const createCollection = async (name) => {
+    const { data } = await supabase.from("recipe_collections").insert({
+      user_id: user.id, name,
+    }).select().single();
+    if (data) setCollections(prev => [{ id: data.id, name: data.name, createdAt: data.created_at, recipeIds: [] }, ...prev]);
+    setNewCollectionName("");
+    setShowCreateCollection(false);
+  };
+
+  const deleteCollection = async (collectionId) => {
+    await supabase.from("recipe_collection_items").delete().eq("collection_id", collectionId);
+    await supabase.from("recipe_collections").delete().eq("id", collectionId).eq("user_id", user.id);
+    setCollections(prev => prev.filter(c => c.id !== collectionId));
+    if (selectedCollection === collectionId) setSelectedCollection(null);
+  };
+
+  const addToCollection = async (collectionId, recipeId) => {
+    const col = collections.find(c => c.id === collectionId);
+    if (col?.recipeIds?.includes(recipeId)) return;
+    await supabase.from("recipe_collection_items").insert({ collection_id: collectionId, recipe_id: recipeId });
+    setCollections(prev => prev.map(c => c.id === collectionId ? { ...c, recipeIds: [...c.recipeIds, recipeId] } : c));
+  };
+
+  const removeFromCollection = async (collectionId, recipeId) => {
+    await supabase.from("recipe_collection_items").delete().eq("collection_id", collectionId).eq("recipe_id", recipeId);
+    setCollections(prev => prev.map(c => c.id === collectionId ? { ...c, recipeIds: c.recipeIds.filter(id => id !== recipeId) } : c));
+  };
+
+  const importFromUrl = async () => {
+    if (!importUrl.trim()) return;
+    setImportLoading(true); setError("");
+    try {
+      const servings = profile?.household_size || 2;
+      const data = await geminiCall({
+        contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. De gebruiker wil een recept importeren van deze URL: ${importUrl}. Genereer een volledig recept in het Nederlands op basis van wat je weet over dit type gerecht/website. Maak het voor ${servings} personen.${profile?.allergies?.length ? ` BELANGRIJK - Allergie\u00EBn (gebruik deze ingredi\u00EBnten NOOIT): ${profile.allergies.join(", ")}` : ""}${profile?.dislikes?.length ? ` Vermijd: ${profile.dislikes.join(", ")}` : ""}
+Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+{"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingredi\u00EBnt 1","ingredi\u00EBnt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}` }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json" },
+      });
+      if (data.error) throw new Error(data.error.message || "API fout");
+      const text = data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("") || "";
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      const newRecipe = {
+        ...parsed, addedBy: profile?.display_name || user.email,
+        favorite: false, rating: 0, tags: [],
+        createdAt: new Date().toISOString(),
+      };
+      const saved = await saveRecipe(newRecipe);
+      if (saved) {
+        setRecipes(prev => [{ ...newRecipe, id: saved.id, isOwn: true }, ...prev]);
+      }
+      setImportUrl(""); setShowImportUrl(false);
+    } catch (err) {
+      setError("Import mislukt: " + (err.message || "Er ging iets mis."));
+    }
+    setImportLoading(false);
+  };
 
   const addPantryItem = async (item) => {
     const { data } = await supabase.from("pantry_items").insert({
@@ -1260,6 +1475,19 @@ ${userPrompt}` }] }],
     await supabase.from("recipes").delete().eq("id", id).eq("user_id", user.id);
     setRecipes(prev => prev.filter(r => r.id !== id));
   };
+  const addToPlanner = async (recipeId, dates, mealType) => {
+    const promises = dates.map(date =>
+      supabase.from("meal_plans").upsert({
+        user_id: user.id,
+        date: date,
+        meal_type: mealType,
+        recipe_id: recipeId,
+        custom_meal: null,
+      }, { onConflict: "user_id,date,meal_type" })
+    );
+    await Promise.all(promises);
+  };
+
   const toggleTag = (id, tag) => {
     const recipe = recipes.find(r => r.id === id);
     if (!recipe) return;
@@ -1273,11 +1501,22 @@ ${userPrompt}` }] }],
     if (filterFav && !r.favorite) return false;
     if (filterTag && !r.tags?.includes(filterTag)) return false;
     if (filterUser && r.addedBy !== filterUser) return false;
+    if (selectedCollection) {
+      const col = collections.find(c => c.id === selectedCollection);
+      if (col && !col.recipeIds.includes(r.id)) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return r.title?.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q) || r.cuisine?.toLowerCase().includes(q);
     }
     return true;
+  }).sort((a, b) => {
+    if (sortBy === "langst-niet-gekookt") {
+      const aTime = a.lastCookedAt ? new Date(a.lastCookedAt).getTime() : 0;
+      const bTime = b.lastCookedAt ? new Date(b.lastCookedAt).getTime() : 0;
+      return aTime - bTime;
+    }
+    return 0;
   });
 
   const favCount = recipes.filter(r => r.favorite).length;
@@ -1948,6 +2187,99 @@ ${userPrompt}` }] }],
               )}
             </div>
 
+            {/* Collections */}
+            {recipes.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  marginBottom: 10,
+                }}>
+                  <h3 style={{
+                    fontFamily: "'Playfair Display', serif", fontSize: 17, color: "#3D2E1F",
+                    margin: 0, display: "flex", alignItems: "center", gap: 8,
+                  }}>📂 Collecties</h3>
+                  <button onClick={() => setShowCreateCollection(!showCreateCollection)}
+                    style={{
+                      background: "none", border: "none", color: "#8B6F47",
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                      fontWeight: 600, cursor: "pointer",
+                    }}>{showCreateCollection ? "Annuleer" : "+ Nieuw"}</button>
+                </div>
+                {showCreateCollection && (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10, animation: "fadeIn 0.2s ease" }}>
+                    <input value={newCollectionName}
+                      onChange={(e) => setNewCollectionName(e.target.value)}
+                      placeholder="Naam van collectie..."
+                      style={{
+                        flex: 1, padding: "10px 14px", borderRadius: 10,
+                        border: "1.5px solid #E2DAD0", background: "#FAF7F2",
+                        fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F",
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && newCollectionName.trim()) createCollection(newCollectionName.trim()); }}
+                    />
+                    <button onClick={() => newCollectionName.trim() && createCollection(newCollectionName.trim())}
+                      disabled={!newCollectionName.trim()}
+                      style={{
+                        padding: "10px 18px", borderRadius: 10, border: "none",
+                        background: newCollectionName.trim()
+                          ? "linear-gradient(135deg, #D4A574, #C09060)" : "#EDE8E0",
+                        color: newCollectionName.trim() ? "#fff" : "#B5A999",
+                        fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                        fontWeight: 600, cursor: newCollectionName.trim() ? "pointer" : "default",
+                      }}>Maak</button>
+                  </div>
+                )}
+                <div style={{
+                  display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4,
+                  WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
+                }}>
+                  <button onClick={() => setSelectedCollection(null)}
+                    style={{
+                      padding: "10px 18px", borderRadius: 14, border: "none", flexShrink: 0,
+                      background: !selectedCollection
+                        ? "linear-gradient(135deg, #D4A574, #C09060)" : "#FFFCF7",
+                      color: !selectedCollection ? "#fff" : "#8C7E6F",
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                      fontWeight: !selectedCollection ? 700 : 500,
+                      cursor: "pointer", transition: "all 0.2s",
+                      boxShadow: !selectedCollection ? "0 3px 12px rgba(212,165,116,0.3)" : "0 1px 6px rgba(139,111,71,0.08)",
+                      border: !selectedCollection ? "none" : "1px solid #EDE8E0",
+                    }}>Alle recepten</button>
+                  {collections.map(col => (
+                    <div key={col.id} style={{ position: "relative", flexShrink: 0 }}>
+                      <button onClick={() => setSelectedCollection(selectedCollection === col.id ? null : col.id)}
+                        style={{
+                          padding: "10px 18px", borderRadius: 14, border: "none",
+                          background: selectedCollection === col.id
+                            ? "linear-gradient(135deg, #D4A574, #C09060)" : "#FFFCF7",
+                          color: selectedCollection === col.id ? "#fff" : "#3D2E1F",
+                          fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                          fontWeight: selectedCollection === col.id ? 700 : 500,
+                          cursor: "pointer", transition: "all 0.2s",
+                          boxShadow: selectedCollection === col.id ? "0 3px 12px rgba(212,165,116,0.3)" : "0 1px 6px rgba(139,111,71,0.08)",
+                          border: selectedCollection === col.id ? "none" : "1px solid #EDE8E0",
+                          display: "flex", alignItems: "center", gap: 6,
+                        }}>
+                        {col.name}
+                        <span style={{ fontSize: 11, opacity: 0.7 }}>({col.recipeIds?.length || 0})</span>
+                      </button>
+                      {selectedCollection === col.id && (
+                        <button onClick={(e) => { e.stopPropagation(); deleteCollection(col.id); }}
+                          style={{
+                            position: "absolute", top: -6, right: -6,
+                            width: 20, height: 20, borderRadius: "50%",
+                            background: "#C85A3D", color: "#fff", border: "none",
+                            fontSize: 11, cursor: "pointer", display: "flex",
+                            alignItems: "center", justifyContent: "center",
+                            boxShadow: "0 2px 6px rgba(200,90,61,0.3)",
+                          }}>×</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Filters */}
             {recipes.length > 0 && (
               <div style={{
@@ -1982,6 +2314,13 @@ ${userPrompt}` }] }],
                         ...Array.from(new Set(recipes.map(r => r.addedBy).filter(Boolean))).map(u => ({ value: u, label: u })),
                       ]}
                       placeholder="Iedereen"
+                    />
+                    <CustomSelect value={sortBy} onChange={setSortBy}
+                      options={[
+                        { value: "", label: "Sorteren" },
+                        { value: "langst-niet-gekookt", label: "🍳 Langst niet gekookt" },
+                      ]}
+                      placeholder="Sorteren"
                     />
                   </div>
                 </div>
@@ -2026,7 +2365,9 @@ ${userPrompt}` }] }],
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {filtered.map((recipe) => (
                 <RecipeCard key={recipe.id} recipe={recipe} onToggleFav={toggleFav}
-                  onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe} />
+                  onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
+                  onMarkCooked={markAsCooked} collections={collections}
+                  onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
               ))}
             </div>
           </>

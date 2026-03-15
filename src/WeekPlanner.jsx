@@ -10,6 +10,111 @@ const MEAL_TYPES = [
 const DAY_NAMES = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 const DAY_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
+// Supermarkt gangpad-indeling: volgorde waarin je door de winkel loopt
+const SUPERMARKET_AISLES = {
+  albert_heijn: {
+    name: "Albert Heijn", color: "#00A0E2", logo: "🔵",
+    aisles: [
+      { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
+      { name: "Brood & Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
+      { name: "Zuivel & Eieren", emoji: "🥛", keywords: ["melk", "kaas", "yoghurt", "room", "slagroom", "boter", "ei", "eieren", "crème fraîche", "mascarpone", "mozzarella", "parmezaan", "parmezan", "feta", "ricotta", "kwark", "cottage cheese", "zuivel", "roomkaas", "cheddar"] },
+      { name: "Vlees & Vis", emoji: "🥩", keywords: ["kip", "kipfilet", "gehakt", "rundergehakt", "biefstuk", "spek", "bacon", "worst", "zalm", "garnaal", "garnalen", "tonijn", "kabeljauw", "vis", "vlees", "rundvlees", "varkensvlees", "lamsvlees", "drumstick", "shoarma", "ham", "chorizo", "pancetta"] },
+      { name: "Kaas & Vleeswaren", emoji: "🧀", keywords: ["plakken kaas", "vleeswaren", "salami", "prosciutto", "filet americain", "hummus", "pesto", "tapas"] },
+      { name: "Pasta, Rijst & Granen", emoji: "🍝", keywords: ["pasta", "spaghetti", "penne", "fusilli", "lasagne", "noodles", "rijst", "basmati", "risotto", "couscous", "quinoa", "bulgur", "havermout", "muesli", "cornflakes", "orzo", "macaroni", "tagliatelle"] },
+      { name: "Conserven & Sauzen", emoji: "🥫", keywords: ["tomatenpuree", "tomatenblokjes", "gepelde tomaten", "passata", "sojasaus", "ketjap", "olijfolie", "zonnebloemolie", "azijn", "balsamico", "sriracha", "tabasco", "sambal", "curry", "kokosmelk", "bouillon", "blik", "ingeblikt", "mais blik", "bonen", "kikkererwten", "linzen", "tomatensaus", "pindakaas", "olie"] },
+      { name: "Kruiden & Specerijen", emoji: "🌿", keywords: ["zout", "peper", "paprikapoeder", "komijn", "kurkuma", "kaneel", "nootmuskaat", "oregano", "cayenne", "chilipoeder", "knoflookpoeder", "uienpoeder", "kerriepoeder", "kruidenmix", "italiaanse kruiden", "za'atar"] },
+      { name: "Bakproducten & Meel", emoji: "🎂", keywords: ["meel", "bloem", "bakpoeder", "gist", "suiker", "poedersuiker", "vanille", "cacao", "chocolade", "maïzena", "paneermeel"] },
+      { name: "Chips & Snacks", emoji: "🍿", keywords: ["chips", "noten", "pinda", "cashew", "amandel", "walnoot", "rozijnen", "gedroogd", "crackers", "soepstengels", "popcorn"] },
+      { name: "Dranken", emoji: "🥤", keywords: ["water", "sap", "sinaasappelsap", "appelsap", "frisdrank", "cola", "bier", "wijn", "koffie", "thee"] },
+      { name: "Diepvries", emoji: "🧊", keywords: ["diepvries", "bevroren", "ijs", "diepvriesgroenten", "friet", "pizza diepvries"] },
+      { name: "Overig", emoji: "📦", keywords: [] },
+    ],
+  },
+  jumbo: {
+    name: "Jumbo", color: "#FFD700", logo: "🟡",
+    aisles: [
+      { name: "AGF (Groente & Fruit)", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
+      { name: "Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
+      { name: "Vlees & Vis", emoji: "🥩", keywords: ["kip", "kipfilet", "gehakt", "rundergehakt", "biefstuk", "spek", "bacon", "worst", "zalm", "garnaal", "garnalen", "tonijn", "kabeljauw", "vis", "vlees", "rundvlees", "varkensvlees", "lamsvlees", "drumstick", "shoarma", "ham", "chorizo", "pancetta"] },
+      { name: "Kaas & Zuivel", emoji: "🧀", keywords: ["melk", "kaas", "yoghurt", "room", "slagroom", "boter", "ei", "eieren", "crème fraîche", "mascarpone", "mozzarella", "parmezaan", "parmezan", "feta", "ricotta", "kwark", "cottage cheese", "zuivel", "roomkaas", "cheddar", "plakken kaas", "vleeswaren", "salami", "prosciutto", "hummus"] },
+      { name: "Houdbaar", emoji: "🥫", keywords: ["pasta", "spaghetti", "penne", "fusilli", "lasagne", "noodles", "rijst", "basmati", "risotto", "couscous", "quinoa", "bulgur", "havermout", "muesli", "cornflakes", "orzo", "macaroni", "tagliatelle", "tomatenpuree", "tomatenblokjes", "gepelde tomaten", "passata", "bouillon", "blik", "bonen", "kikkererwten", "linzen", "mais blik", "pindakaas", "meel", "bloem", "bakpoeder", "gist", "suiker", "vanille", "cacao", "chocolade", "maïzena", "paneermeel"] },
+      { name: "Sauzen & Oliën", emoji: "🫒", keywords: ["sojasaus", "ketjap", "olijfolie", "zonnebloemolie", "azijn", "balsamico", "sriracha", "tabasco", "sambal", "kokosmelk", "tomatensaus", "olie", "pesto", "curry"] },
+      { name: "Kruiden", emoji: "🌿", keywords: ["zout", "peper", "paprikapoeder", "komijn", "kurkuma", "kaneel", "nootmuskaat", "oregano", "cayenne", "chilipoeder", "knoflookpoeder", "uienpoeder", "kerriepoeder", "kruidenmix", "italiaanse kruiden", "za'atar"] },
+      { name: "Snacks & Zoetwaren", emoji: "🍿", keywords: ["chips", "noten", "pinda", "cashew", "amandel", "walnoot", "rozijnen", "gedroogd", "crackers", "popcorn"] },
+      { name: "Dranken", emoji: "🥤", keywords: ["water", "sap", "sinaasappelsap", "appelsap", "frisdrank", "cola", "bier", "wijn", "koffie", "thee"] },
+      { name: "Diepvries", emoji: "🧊", keywords: ["diepvries", "bevroren", "ijs", "diepvriesgroenten", "friet", "pizza diepvries"] },
+      { name: "Overig", emoji: "📦", keywords: [] },
+    ],
+  },
+  lidl: {
+    name: "Lidl", color: "#0050AA", logo: "🟦",
+    aisles: [
+      { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
+      { name: "Brood", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
+      { name: "Koeling", emoji: "🥛", keywords: ["melk", "kaas", "yoghurt", "room", "slagroom", "boter", "ei", "eieren", "crème fraîche", "mascarpone", "mozzarella", "parmezaan", "parmezan", "feta", "ricotta", "kwark", "cottage cheese", "zuivel", "roomkaas", "cheddar", "plakken kaas", "vleeswaren", "salami", "hummus", "pesto"] },
+      { name: "Vlees & Vis", emoji: "🥩", keywords: ["kip", "kipfilet", "gehakt", "rundergehakt", "biefstuk", "spek", "bacon", "worst", "zalm", "garnaal", "garnalen", "tonijn", "kabeljauw", "vis", "vlees", "rundvlees", "varkensvlees", "lamsvlees", "drumstick", "shoarma", "ham", "chorizo", "pancetta"] },
+      { name: "Droog & Conserven", emoji: "🥫", keywords: ["pasta", "spaghetti", "penne", "fusilli", "lasagne", "noodles", "rijst", "basmati", "risotto", "couscous", "quinoa", "bulgur", "havermout", "muesli", "cornflakes", "orzo", "macaroni", "tagliatelle", "tomatenpuree", "tomatenblokjes", "gepelde tomaten", "passata", "bouillon", "blik", "bonen", "kikkererwten", "linzen", "mais blik", "pindakaas", "meel", "bloem", "bakpoeder", "gist", "suiker", "vanille", "cacao", "chocolade", "maïzena", "paneermeel", "sojasaus", "ketjap", "olijfolie", "zonnebloemolie", "azijn", "balsamico", "sriracha", "sambal", "kokosmelk", "tomatensaus", "olie", "curry"] },
+      { name: "Kruiden & Specerijen", emoji: "🌿", keywords: ["zout", "peper", "paprikapoeder", "komijn", "kurkuma", "kaneel", "nootmuskaat", "oregano", "cayenne", "chilipoeder", "knoflookpoeder", "uienpoeder", "kerriepoeder", "kruidenmix", "italiaanse kruiden", "za'atar"] },
+      { name: "Snacks", emoji: "🍿", keywords: ["chips", "noten", "pinda", "cashew", "amandel", "walnoot", "rozijnen", "gedroogd", "crackers", "popcorn"] },
+      { name: "Dranken", emoji: "🥤", keywords: ["water", "sap", "sinaasappelsap", "appelsap", "frisdrank", "cola", "bier", "wijn", "koffie", "thee"] },
+      { name: "Diepvries", emoji: "🧊", keywords: ["diepvries", "bevroren", "ijs", "diepvriesgroenten", "friet", "pizza diepvries"] },
+      { name: "Overig", emoji: "📦", keywords: [] },
+    ],
+  },
+  aldi: {
+    name: "Aldi", color: "#E30613", logo: "🟥",
+    aisles: [
+      { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
+      { name: "Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
+      { name: "Koelvers", emoji: "🥛", keywords: ["melk", "kaas", "yoghurt", "room", "slagroom", "boter", "ei", "eieren", "crème fraîche", "mascarpone", "mozzarella", "parmezaan", "parmezan", "feta", "ricotta", "kwark", "cottage cheese", "zuivel", "roomkaas", "cheddar", "plakken kaas", "vleeswaren", "salami", "hummus", "pesto", "kip", "kipfilet", "gehakt", "rundergehakt", "biefstuk", "spek", "bacon", "worst", "zalm", "garnaal", "garnalen", "tonijn", "kabeljauw", "vis", "vlees", "rundvlees", "varkensvlees", "lamsvlees", "drumstick", "shoarma", "ham", "chorizo", "pancetta"] },
+      { name: "Houdbaar", emoji: "🥫", keywords: ["pasta", "spaghetti", "penne", "fusilli", "lasagne", "noodles", "rijst", "basmati", "risotto", "couscous", "quinoa", "bulgur", "havermout", "muesli", "cornflakes", "orzo", "macaroni", "tagliatelle", "tomatenpuree", "tomatenblokjes", "gepelde tomaten", "passata", "bouillon", "blik", "bonen", "kikkererwten", "linzen", "mais blik", "pindakaas", "meel", "bloem", "bakpoeder", "gist", "suiker", "vanille", "cacao", "chocolade", "maïzena", "paneermeel", "sojasaus", "ketjap", "olijfolie", "zonnebloemolie", "azijn", "balsamico", "sriracha", "sambal", "kokosmelk", "tomatensaus", "olie", "curry"] },
+      { name: "Kruiden", emoji: "🌿", keywords: ["zout", "peper", "paprikapoeder", "komijn", "kurkuma", "kaneel", "nootmuskaat", "oregano", "cayenne", "chilipoeder", "knoflookpoeder", "uienpoeder", "kerriepoeder", "kruidenmix", "italiaanse kruiden", "za'atar"] },
+      { name: "Snacks & Zoetwaren", emoji: "🍿", keywords: ["chips", "noten", "pinda", "cashew", "amandel", "walnoot", "rozijnen", "gedroogd", "crackers", "popcorn"] },
+      { name: "Dranken", emoji: "🥤", keywords: ["water", "sap", "sinaasappelsap", "appelsap", "frisdrank", "cola", "bier", "wijn", "koffie", "thee"] },
+      { name: "Diepvries", emoji: "🧊", keywords: ["diepvries", "bevroren", "ijs", "diepvriesgroenten", "friet", "pizza diepvries"] },
+      { name: "Overig", emoji: "📦", keywords: [] },
+    ],
+  },
+  plus: {
+    name: "PLUS", color: "#E87C1E", logo: "🟧",
+    aisles: [
+      { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
+      { name: "Brood & Banket", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
+      { name: "Slagerij & Vis", emoji: "🥩", keywords: ["kip", "kipfilet", "gehakt", "rundergehakt", "biefstuk", "spek", "bacon", "worst", "zalm", "garnaal", "garnalen", "tonijn", "kabeljauw", "vis", "vlees", "rundvlees", "varkensvlees", "lamsvlees", "drumstick", "shoarma", "ham", "chorizo", "pancetta"] },
+      { name: "Zuivel & Kaas", emoji: "🧀", keywords: ["melk", "kaas", "yoghurt", "room", "slagroom", "boter", "ei", "eieren", "crème fraîche", "mascarpone", "mozzarella", "parmezaan", "parmezan", "feta", "ricotta", "kwark", "cottage cheese", "zuivel", "roomkaas", "cheddar", "plakken kaas", "vleeswaren", "salami", "hummus", "pesto"] },
+      { name: "Houdbaar", emoji: "🥫", keywords: ["pasta", "spaghetti", "penne", "fusilli", "lasagne", "noodles", "rijst", "basmati", "risotto", "couscous", "quinoa", "bulgur", "havermout", "muesli", "cornflakes", "orzo", "macaroni", "tagliatelle", "tomatenpuree", "tomatenblokjes", "gepelde tomaten", "passata", "bouillon", "blik", "bonen", "kikkererwten", "linzen", "mais blik", "pindakaas", "meel", "bloem", "bakpoeder", "gist", "suiker", "vanille", "cacao", "chocolade", "maïzena", "paneermeel", "sojasaus", "ketjap", "olijfolie", "zonnebloemolie", "azijn", "balsamico", "sriracha", "sambal", "kokosmelk", "tomatensaus", "olie", "curry"] },
+      { name: "Kruiden", emoji: "🌿", keywords: ["zout", "peper", "paprikapoeder", "komijn", "kurkuma", "kaneel", "nootmuskaat", "oregano", "cayenne", "chilipoeder", "knoflookpoeder", "uienpoeder", "kerriepoeder", "kruidenmix", "italiaanse kruiden", "za'atar"] },
+      { name: "Dranken", emoji: "🥤", keywords: ["water", "sap", "sinaasappelsap", "appelsap", "frisdrank", "cola", "bier", "wijn", "koffie", "thee"] },
+      { name: "Diepvries", emoji: "🧊", keywords: ["diepvries", "bevroren", "ijs", "diepvriesgroenten", "friet", "pizza diepvries"] },
+      { name: "Overig", emoji: "📦", keywords: [] },
+    ],
+  },
+  dirk: {
+    name: "Dirk", color: "#D4001A", logo: "🔴",
+    aisles: [
+      { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
+      { name: "Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
+      { name: "Vlees, Vis & Zuivel", emoji: "🥩", keywords: ["kip", "kipfilet", "gehakt", "rundergehakt", "biefstuk", "spek", "bacon", "worst", "zalm", "garnaal", "garnalen", "tonijn", "kabeljauw", "vis", "vlees", "rundvlees", "varkensvlees", "lamsvlees", "drumstick", "shoarma", "ham", "chorizo", "pancetta", "melk", "kaas", "yoghurt", "room", "slagroom", "boter", "ei", "eieren", "crème fraîche", "mascarpone", "mozzarella", "parmezaan", "parmezan", "feta", "ricotta", "kwark", "cottage cheese", "zuivel", "roomkaas", "cheddar", "plakken kaas", "vleeswaren", "salami", "hummus", "pesto"] },
+      { name: "Houdbaar", emoji: "🥫", keywords: ["pasta", "spaghetti", "penne", "fusilli", "lasagne", "noodles", "rijst", "basmati", "risotto", "couscous", "quinoa", "bulgur", "havermout", "muesli", "cornflakes", "orzo", "macaroni", "tagliatelle", "tomatenpuree", "tomatenblokjes", "gepelde tomaten", "passata", "bouillon", "blik", "bonen", "kikkererwten", "linzen", "mais blik", "pindakaas", "meel", "bloem", "bakpoeder", "gist", "suiker", "vanille", "cacao", "chocolade", "maïzena", "paneermeel", "sojasaus", "ketjap", "olijfolie", "zonnebloemolie", "azijn", "balsamico", "sriracha", "sambal", "kokosmelk", "tomatensaus", "olie", "curry"] },
+      { name: "Kruiden", emoji: "🌿", keywords: ["zout", "peper", "paprikapoeder", "komijn", "kurkuma", "kaneel", "nootmuskaat", "oregano", "cayenne", "chilipoeder", "knoflookpoeder", "uienpoeder", "kerriepoeder", "kruidenmix", "italiaanse kruiden", "za'atar"] },
+      { name: "Dranken", emoji: "🥤", keywords: ["water", "sap", "sinaasappelsap", "appelsap", "frisdrank", "cola", "bier", "wijn", "koffie", "thee"] },
+      { name: "Diepvries", emoji: "🧊", keywords: ["diepvries", "bevroren", "ijs", "diepvriesgroenten", "friet", "pizza diepvries"] },
+      { name: "Overig", emoji: "📦", keywords: [] },
+    ],
+  },
+};
+
+function categorizeIngredient(name, aisles) {
+  const lower = name.toLowerCase();
+  for (let i = 0; i < aisles.length; i++) {
+    if (aisles[i].keywords.some(kw => lower.includes(kw))) {
+      return { aisle: aisles[i].name, emoji: aisles[i].emoji, order: i };
+    }
+  }
+  // Fallback: "Overig"
+  return { aisle: aisles[aisles.length - 1].name, emoji: aisles[aisles.length - 1].emoji, order: aisles.length - 1 };
+}
+
 function getWeekDates(offset = 0) {
   const now = new Date();
   const day = now.getDay();
@@ -32,7 +137,7 @@ function isToday(d) {
   return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
-export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRecipes }) {
+export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRecipes, preferredSupermarket = "" }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [mealPlans, setMealPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -211,19 +316,26 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
       }
     });
     const pantryNames = (pantry || []).map((p) => p.name.toLowerCase().trim());
+    const supermarket = SUPERMARKET_AISLES[preferredSupermarket];
     return Object.values(ingredients)
       .map((item) => {
         const keyLower = item.name.toLowerCase().trim();
         const inPantry = pantryNames.some(
           (pn) => keyLower.includes(pn) || pn.includes(keyLower)
         );
-        return { ...item, inPantry };
+        const category = supermarket
+          ? categorizeIngredient(item.name, supermarket.aisles)
+          : null;
+        return { ...item, inPantry, aisle: category?.aisle, aisleEmoji: category?.emoji, aisleOrder: category?.order ?? 999 };
       })
       .sort((a, b) => {
         if (a.inPantry !== b.inPantry) return a.inPantry ? 1 : -1;
+        if (supermarket) {
+          if (a.aisleOrder !== b.aisleOrder) return a.aisleOrder - b.aisleOrder;
+        }
         return a.name.localeCompare(b.name);
       });
-  }, [mealPlans, recipes, pantry]);
+  }, [mealPlans, recipes, pantry, preferredSupermarket]);
 
   const filteredRecipes = recipes.filter(
     (r) =>
@@ -301,10 +413,22 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
           boxShadow: "0 4px 28px rgba(139,111,71,0.10)", marginBottom: 16,
           border: "1px solid #EDE8E0", animation: "fadeIn 0.3s ease",
         }}>
-          <h4 style={{
-            fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
-            margin: "0 0 12px", display: "flex", alignItems: "center", gap: 8,
-          }}>🛒 Boodschappenlijst</h4>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <h4 style={{
+              fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
+              margin: 0, display: "flex", alignItems: "center", gap: 8,
+            }}>🛒 Boodschappenlijst</h4>
+            {(() => {
+              const sm = SUPERMARKET_AISLES[preferredSupermarket];
+              return sm ? (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, color: sm.color,
+                  background: sm.color + "15", padding: "3px 10px", borderRadius: 10,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>{sm.logo} {sm.name}-route</span>
+              ) : null;
+            })()}
+          </div>
           {groceryList.length === 0 ? (
             <p style={{ fontSize: 13, color: "#A89B8A", margin: 0 }}>
               Plan recepten in om een boodschappenlijst te genereren.
@@ -317,46 +441,147 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
               }}>
                 ✓ {groceryList.filter((i) => i.inPantry).length} van {groceryList.length} ingrediënten al in huis
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {groceryList.map((item) => (
-                  <div key={item.name} style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "8px 12px", borderRadius: 10,
-                    background: item.inPantry ? "#6B8F5E08" : "#FAF7F2",
-                    border: item.inPantry ? "1px solid #6B8F5E30" : "1px solid #EDE8E0",
-                    opacity: item.inPantry ? 0.7 : 1,
-                  }}>
-                    <span style={{
-                      fontSize: 13, fontFamily: "'DM Sans', sans-serif",
-                      color: item.inPantry ? "#6B8F5E" : "#3D2E1F",
-                      textDecoration: item.inPantry ? "line-through" : "none",
-                    }}>
-                      {item.inPantry ? "✓ " : ""}{item.name}
-                    </span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      {item.inPantry && (
-                        <span style={{
-                          fontSize: 10, color: "#6B8F5E", fontWeight: 600,
-                          background: "#6B8F5E15", padding: "2px 8px", borderRadius: 8,
-                        }}>in voorraad</span>
-                      )}
-                      {item.count > 1 && (
-                        <span style={{
-                          fontSize: 11, color: "#8B6F47", fontWeight: 600,
-                          background: "#8B6F4715", padding: "2px 8px", borderRadius: 8,
-                        }}>×{item.count}</span>
-                      )}
-                    </div>
+
+              {/* Gegroepeerd per gangpad als supermarkt is geselecteerd */}
+              {preferredSupermarket && SUPERMARKET_AISLES[preferredSupermarket] ? (() => {
+                const toBuy = groceryList.filter(i => !i.inPantry);
+                const inStock = groceryList.filter(i => i.inPantry);
+                const grouped = {};
+                toBuy.forEach(item => {
+                  const key = item.aisle || "Overig";
+                  if (!grouped[key]) grouped[key] = { emoji: item.aisleEmoji || "📦", order: item.aisleOrder, items: [] };
+                  grouped[key].items.push(item);
+                });
+                const sortedAisles = Object.entries(grouped).sort(([,a], [,b]) => a.order - b.order);
+                return (
+                  <div>
+                    {sortedAisles.map(([aisleName, group]) => (
+                      <div key={aisleName} style={{ marginBottom: 12 }}>
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 6, marginBottom: 6,
+                          padding: "4px 0",
+                        }}>
+                          <span style={{ fontSize: 15 }}>{group.emoji}</span>
+                          <span style={{
+                            fontSize: 12, fontWeight: 700, color: "#8C7E6F",
+                            fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}>{aisleName}</span>
+                          <span style={{
+                            fontSize: 10, color: "#B5A999", fontWeight: 500,
+                          }}>({group.items.length})</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {group.items.map(item => (
+                            <div key={item.name} style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "7px 12px", borderRadius: 8,
+                              background: "#FAF7F2", border: "1px solid #EDE8E0",
+                            }}>
+                              <span style={{ fontSize: 13, fontFamily: "'DM Sans', sans-serif", color: "#3D2E1F" }}>
+                                {item.name}
+                              </span>
+                              {item.count > 1 && (
+                                <span style={{
+                                  fontSize: 11, color: "#8B6F47", fontWeight: 600,
+                                  background: "#8B6F4715", padding: "2px 8px", borderRadius: 8,
+                                }}>×{item.count}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {inStock.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 6, marginBottom: 6,
+                          padding: "4px 0",
+                        }}>
+                          <span style={{ fontSize: 15 }}>✅</span>
+                          <span style={{
+                            fontSize: 12, fontWeight: 700, color: "#6B8F5E",
+                            fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}>Al in huis</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {inStock.map(item => (
+                            <div key={item.name} style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "7px 12px", borderRadius: 8,
+                              background: "#6B8F5E08", border: "1px solid #6B8F5E30",
+                              opacity: 0.7,
+                            }}>
+                              <span style={{
+                                fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+                                color: "#6B8F5E", textDecoration: "line-through",
+                              }}>✓ {item.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })() : (
+                /* Geen supermarkt geselecteerd: gewone lijst */
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {groceryList.map((item) => (
+                    <div key={item.name} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "8px 12px", borderRadius: 10,
+                      background: item.inPantry ? "#6B8F5E08" : "#FAF7F2",
+                      border: item.inPantry ? "1px solid #6B8F5E30" : "1px solid #EDE8E0",
+                      opacity: item.inPantry ? 0.7 : 1,
+                    }}>
+                      <span style={{
+                        fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+                        color: item.inPantry ? "#6B8F5E" : "#3D2E1F",
+                        textDecoration: item.inPantry ? "line-through" : "none",
+                      }}>
+                        {item.inPantry ? "✓ " : ""}{item.name}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {item.inPantry && (
+                          <span style={{
+                            fontSize: 10, color: "#6B8F5E", fontWeight: 600,
+                            background: "#6B8F5E15", padding: "2px 8px", borderRadius: 8,
+                          }}>in voorraad</span>
+                        )}
+                        {item.count > 1 && (
+                          <span style={{
+                            fontSize: 11, color: "#8B6F47", fontWeight: 600,
+                            background: "#8B6F4715", padding: "2px 8px", borderRadius: 8,
+                          }}>×{item.count}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {groceryList.some((i) => !i.inPantry) && (
                 <button
                   onClick={() => {
-                    const text = groceryList
-                      .filter((i) => !i.inPantry)
-                      .map((i) => `${i.name}${i.count > 1 ? ` (×${i.count})` : ""}`)
-                      .join("\n");
+                    const sm = SUPERMARKET_AISLES[preferredSupermarket];
+                    const toBuy = groceryList.filter((i) => !i.inPantry);
+                    let text;
+                    if (sm) {
+                      const grouped = {};
+                      toBuy.forEach(item => {
+                        const key = item.aisle || "Overig";
+                        if (!grouped[key]) grouped[key] = [];
+                        grouped[key].push(item);
+                      });
+                      text = `🛒 Boodschappenlijst (${sm.name})\n\n` +
+                        Object.entries(grouped)
+                          .map(([aisle, items]) =>
+                            `${aisle}:\n` + items.map(i => `  • ${i.name}${i.count > 1 ? ` (×${i.count})` : ""}`).join("\n")
+                          ).join("\n\n");
+                    } else {
+                      text = toBuy.map((i) => `${i.name}${i.count > 1 ? ` (×${i.count})` : ""}`).join("\n");
+                    }
                     navigator.clipboard.writeText(text);
                   }}
                   style={{
@@ -366,7 +591,16 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                     fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
                     transition: "all 0.2s",
                   }}
-                >📋 Kopieer boodschappenlijst</button>
+                >📋 Kopieer boodschappenlijst{preferredSupermarket && SUPERMARKET_AISLES[preferredSupermarket] ? ` (${SUPERMARKET_AISLES[preferredSupermarket].name})` : ""}</button>
+              )}
+
+              {!preferredSupermarket && (
+                <p style={{
+                  fontSize: 11, color: "#A89B8A", margin: "8px 0 0", textAlign: "center",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>
+                  💡 Selecteer je supermarkt in Instellingen voor een slimme gangpad-route
+                </p>
               )}
             </div>
           )}

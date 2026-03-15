@@ -4,10 +4,20 @@ import { supabase } from "./supabaseClient";
 const CUISINES = ["Italiaans", "Aziatisch", "Mexicaans", "Frans", "Grieks", "Indiaas", "Japans", "Thais", "Hollands", "Amerikaans", "Midden-Oosters", "Afrikaans"];
 const DIETS = ["Vegetarisch", "Veganistisch", "Glutenvrij", "Lactosevrij", "Koolhydraatarm", "Eiwitrijk"];
 
+const SUPERMARKETS = [
+  { id: "albert_heijn", name: "Albert Heijn", color: "#00A0E2", logo: "🔵" },
+  { id: "jumbo", name: "Jumbo", color: "#FFD700", logo: "🟡" },
+  { id: "lidl", name: "Lidl", color: "#0050AA", logo: "🟦" },
+  { id: "aldi", name: "Aldi", color: "#E30613", logo: "🟥" },
+  { id: "plus", name: "PLUS", color: "#E87C1E", logo: "🟧" },
+  { id: "dirk", name: "Dirk", color: "#D4001A", logo: "🔴" },
+];
+
 export default function ProfilePage({ user, profile, onProfileUpdate }) {
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [favCuisine, setFavCuisine] = useState(profile?.favorite_cuisine || []);
   const [dietPrefs, setDietPrefs] = useState(profile?.dietary_preferences || []);
+  const [preferredSupermarket, setPreferredSupermarket] = useState(profile?.preferred_supermarket || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [stats, setStats] = useState({ recipes: 0, favorites: 0, pantry: 0, shared: 0 });
@@ -20,6 +30,7 @@ export default function ProfilePage({ user, profile, onProfileUpdate }) {
     setDisplayName(profile?.display_name || "");
     setFavCuisine(profile?.favorite_cuisine || []);
     setDietPrefs(profile?.dietary_preferences || []);
+    setPreferredSupermarket(profile?.preferred_supermarket || "");
   }, [profile]);
 
   const loadStats = async () => {
@@ -43,10 +54,11 @@ export default function ProfilePage({ user, profile, onProfileUpdate }) {
       display_name: displayName,
       favorite_cuisine: favCuisine,
       dietary_preferences: dietPrefs,
+      preferred_supermarket: preferredSupermarket,
     });
     if (!error) {
       setSaved(true);
-      onProfileUpdate({ display_name: displayName, favorite_cuisine: favCuisine, dietary_preferences: dietPrefs });
+      onProfileUpdate({ display_name: displayName, favorite_cuisine: favCuisine, dietary_preferences: dietPrefs, preferred_supermarket: preferredSupermarket });
       setTimeout(() => setSaved(false), 2000);
     }
     setSaving(false);
@@ -159,7 +171,7 @@ export default function ProfilePage({ user, profile, onProfileUpdate }) {
           </div>
         </div>
 
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 12, color: "#8C7E6F", fontWeight: 600, display: "block", marginBottom: 8 }}>
             Dieetvoorkeuren
           </label>
@@ -178,6 +190,44 @@ export default function ProfilePage({ user, profile, onProfileUpdate }) {
                 {d}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 12, color: "#8C7E6F", fontWeight: 600, display: "block", marginBottom: 4 }}>
+            Voorkeurs-supermarkt
+          </label>
+          <p style={{ fontSize: 11, color: "#A89B8A", margin: "0 0 10px", fontFamily: "'DM Sans', sans-serif" }}>
+            Je boodschappenlijst wordt gesorteerd op de gangpadindeling van jouw winkel
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            {SUPERMARKETS.map(sm => {
+              const selected = preferredSupermarket === sm.id;
+              return (
+                <button key={sm.id} onClick={() => setPreferredSupermarket(selected ? "" : sm.id)}
+                  style={{
+                    padding: "12px 8px", borderRadius: 14,
+                    border: selected ? `2px solid ${sm.color}` : "1.5px solid #D5CEC4",
+                    background: selected ? sm.color + "12" : "transparent",
+                    cursor: "pointer", transition: "all 0.2s",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                  }}
+                >
+                  <span style={{ fontSize: 22 }}>{sm.logo}</span>
+                  <span style={{
+                    fontSize: 12, fontWeight: selected ? 700 : 500,
+                    color: selected ? sm.color : "#8C7E6F",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}>{sm.name}</span>
+                  {selected && (
+                    <span style={{
+                      fontSize: 9, color: sm.color, fontWeight: 700,
+                      background: sm.color + "18", padding: "1px 8px", borderRadius: 8,
+                    }}>GESELECTEERD</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
