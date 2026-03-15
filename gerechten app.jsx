@@ -1013,6 +1013,13 @@ export default function RecipeApp({ session }) {
   const [wizardStep, setWizardStep] = useState(0);
   const [selectedSuggestions, setSelectedSuggestions] = useState([]);
   const [pexelsImages, setPexelsImages] = useState({});
+  const [showImportUrl, setShowImportUrl] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [collections, setCollections] = useState([]);
+  const [newCollectionName, setNewCollectionName] = useState("");
+  const [showCreateCollection, setShowCreateCollection] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState(null);
 
   useEffect(() => {
     (async () => {
