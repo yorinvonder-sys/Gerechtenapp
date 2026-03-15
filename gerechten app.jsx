@@ -1011,6 +1011,8 @@ export default function RecipeApp({ session }) {
   const [suggestions, setSuggestions] = useState([]);
   const [choosingRecipe, setChoosingRecipe] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
+  const [selectedSuggestions, setSelectedSuggestions] = useState([]);
+  const [pexelsImages, setPexelsImages] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -1150,25 +1152,55 @@ ${userPrompt}` }] }],
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
 
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Geen suggesties ontvangen");
-      setSuggestions(parsed.slice(0, 5));
+      const items = parsed.slice(0, 5);
+      setSuggestions(items);
+      setSelectedSuggestions([]);
       setChoosingRecipe(true);
       setGenStatus("");
+      // Load Pexels images in background
+      items.forEach(async (s, i) => {
+        try {
+          const q = s.imageQuery || s.title;
+          const pexelsKey = import.meta.env.VITE_PEXELS_API_KEY;
+          let imgUrl = null;
+          if (pexelsKey) {
+            const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q + " food dish")}&per_page=1&orientation=landscape`, { headers: { Authorization: pexelsKey } });
+            const d = await r.json();
+            imgUrl = d.photos?.[0]?.src?.medium || null;
+          } else {
+            const r = await fetch(`/api/pexels?q=${encodeURIComponent(q)}`);
+            const d = await r.json();
+            imgUrl = d.url || null;
+          }
+          if (imgUrl) setPexelsImages(prev => ({ ...prev, [i]: imgUrl }));
+        } catch {}
+      });
     } catch (err) {
       setError("Oeps! " + (err.message || "Er ging iets mis.")); setGenStatus("");
     }
     setLoading(false);
   };
 
-  const pickSuggestion = async (suggestion) => {
-    setLoading(true); setChoosingRecipe(false);
-    setGenStatus("Volledig recept uitwerken...");
+  const toggleSuggestion = (i) => {
+    setSelectedSuggestions(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
+  };
 
+  const processSelectedSuggestions = async () => {
+    const picks = selectedSuggestions.map(i => suggestions[i]);
+    if (picks.length === 0) return;
+
+    setLoading(true); setChoosingRecipe(false);
     const servings = profile?.household_size || 2;
     const userPrompt = buildUserPrompt();
+    const savedRecipes = [];
 
-    try {
-      const data = await geminiCall({
-        contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Werk het gegeven receptidee uit tot een volledig recept in het Nederlands, voor ${servings} personen. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+    for (let idx = 0; idx < picks.length; idx++) {
+      const suggestion = picks[idx];
+      setGenStatus(`Recept ${idx + 1}/${picks.length} uitwerken: ${suggestion.title}...`);
+
+      try {
+        const data = await geminiCall({
+          contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Werk het gegeven receptidee uit tot een volledig recept in het Nederlands, voor ${servings} personen. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
 {"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingrediënt 1","ingrediënt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}
 
 Werk dit receptidee uit:
@@ -1178,27 +1210,38 @@ Keuken: ${suggestion.cuisine}
 
 Context van de gebruiker:
 ${userPrompt}` }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json" },
-      });
-      if (data.error) throw new Error(data.error.message || "API fout");
-      const text = data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("") || "";
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json" },
+        });
+        if (data.error) throw new Error(data.error.message || "API fout");
+        const text = data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("") || "";
+        const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
 
-      const newRecipe = {
-        ...parsed, addedBy: profile?.display_name || user.email,
-        favorite: false, rating: 0, tags: [],
-        usedPantry: usePantry && pantry.length > 0,
-        createdAt: new Date().toISOString(),
-      };
-      const saved = await saveRecipe(newRecipe);
-      if (saved) {
-        setRecipes(prev => [{ ...newRecipe, id: saved.id, isOwn: true }, ...prev]);
+        const newRecipe = {
+          ...parsed, addedBy: profile?.display_name || user.email,
+          favorite: false, rating: 0, tags: [],
+          usedPantry: usePantry && pantry.length > 0,
+          createdAt: new Date().toISOString(),
+        };
+        const saved = await saveRecipe(newRecipe);
+        if (saved) {
+          const fullRecipe = { ...newRecipe, id: saved.id, isOwn: true };
+          setRecipes(prev => [fullRecipe, ...prev]);
+          savedRecipes.push(fullRecipe);
+        }
+      } catch (err) {
+        setError(`Fout bij "${suggestion.title}": ${err.message || "Er ging iets mis."}`);
       }
-      setPrompt(""); setSelectedCuisines([]); setSelectedDiets([]); setSelectedTime(""); setUsePantry(false); setSuggestions([]); setGenStatus(""); setWizardStep(0);
-    } catch (err) {
-      setError("Oeps! " + (err.message || "Er ging iets mis.")); setGenStatus("");
     }
+
+    setPrompt(""); setSelectedCuisines([]); setSelectedDiets([]); setSelectedTime("");
+    setUsePantry(false); setSuggestions([]); setSelectedSuggestions([]);
+    setPexelsImages({}); setGenStatus(""); setWizardStep(0);
     setLoading(false);
+
+    // Navigate to weekplanner if multiple recipes were saved
+    if (savedRecipes.length > 1) {
+      setActiveTab("weekplanner");
+    }
   };
 
   const toggleFav = (id) => {
@@ -1718,9 +1761,9 @@ ${userPrompt}` }] }],
                 <div style={{ animation: "fadeIn 0.4s ease" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                     <p style={{ fontSize: 12, color: "#A89B8A", margin: 0, fontFamily: "'DM Sans', sans-serif" }}>
-                      Swipe of klik om te kiezen →
+                      Selecteer een of meerdere gerechten →
                     </p>
-                    <button onClick={() => { setChoosingRecipe(false); setSuggestions([]); setWizardStep(0); }}
+                    <button onClick={() => { setChoosingRecipe(false); setSuggestions([]); setSelectedSuggestions([]); setPexelsImages({}); setWizardStep(0); }}
                       style={{ background: "none", border: "none", fontSize: 12, color: "#A89B8A", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
                     >✕ Opnieuw</button>
                   </div>
@@ -1732,39 +1775,41 @@ ${userPrompt}` }] }],
                   }}>
                     {suggestions.map((s, i) => {
                       const vis = CUISINE_VISUALS[s.cuisine] || DEFAULT_VISUAL;
+                      const selected = selectedSuggestions.includes(i);
                       return (
-                        <button key={i} onClick={() => pickSuggestion(s)}
+                        <button key={i} onClick={() => toggleSuggestion(i)}
                           style={{
                             flex: "0 0 240px", scrollSnapAlign: "start",
-                            borderRadius: 18, border: "none", overflow: "hidden",
+                            borderRadius: 18, overflow: "hidden",
+                            border: selected ? "3px solid #D4A574" : "3px solid transparent",
                             background: "#FFFCF7", cursor: "pointer",
-                            boxShadow: "0 4px 20px rgba(139,111,71,0.12)",
+                            boxShadow: selected ? "0 8px 32px rgba(212,165,116,0.3)" : "0 4px 20px rgba(139,111,71,0.12)",
                             transition: "all 0.3s ease", textAlign: "left",
                             display: "flex", flexDirection: "column",
+                            transform: selected ? "translateY(-4px)" : "translateY(0)",
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "translateY(-6px) scale(1.02)";
-                            e.currentTarget.style.boxShadow = "0 12px 40px rgba(139,111,71,0.22)";
+                            if (!selected) {
+                              e.currentTarget.style.transform = "translateY(-4px)";
+                              e.currentTarget.style.boxShadow = "0 12px 40px rgba(139,111,71,0.22)";
+                            }
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "translateY(0) scale(1)";
-                            e.currentTarget.style.boxShadow = "0 4px 20px rgba(139,111,71,0.12)";
+                            if (!selected) {
+                              e.currentTarget.style.transform = "translateY(0)";
+                              e.currentTarget.style.boxShadow = "0 4px 20px rgba(139,111,71,0.12)";
+                            }
                           }}
                         >
                           <div style={{
                             height: 140, width: "100%", position: "relative",
                             background: vis.gradient, overflow: "hidden",
                           }}>
-                            <img
-                              src={`https://source.unsplash.com/520x300/?${encodeURIComponent(s.imageQuery || s.title)},food`}
-                              alt={s.title}
-                              style={{
-                                width: "100%", height: "100%", objectFit: "cover",
-                                opacity: 0, transition: "opacity 0.4s ease",
-                              }}
-                              onLoad={(e) => e.target.style.opacity = 1}
-                              onError={(e) => e.target.style.display = "none"}
-                            />
+                            {pexelsImages[i] && (
+                              <img src={pexelsImages[i]} alt={s.title}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            )}
                             <div style={{
                               position: "absolute", bottom: 0, left: 0, right: 0, height: 70,
                               background: "linear-gradient(transparent, rgba(0,0,0,0.5))",
@@ -1783,15 +1828,18 @@ ${userPrompt}` }] }],
                               fontSize: 11, fontWeight: 500, color: "#6B5D4F",
                               fontFamily: "'DM Sans', sans-serif",
                             }}>⏱ {s.prepTime}</div>
-                            {/* Number badge */}
+                            {/* Selection checkbox */}
                             <div style={{
                               position: "absolute", top: 10, left: 10,
-                              width: 26, height: 26, borderRadius: "50%",
-                              background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+                              width: 28, height: 28, borderRadius: "50%",
+                              background: selected ? "#D4A574" : "rgba(255,255,255,0.92)",
+                              backdropFilter: "blur(8px)",
                               display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: 12, fontWeight: 700, color: "#8B6F47",
+                              fontSize: selected ? 14 : 12, fontWeight: 700,
+                              color: selected ? "#fff" : "#8B6F47",
                               fontFamily: "'DM Sans', sans-serif",
-                            }}>{i + 1}</div>
+                              transition: "all 0.2s",
+                            }}>{selected ? "✓" : i + 1}</div>
                           </div>
                           <div style={{ padding: "14px 16px 16px" }}>
                             <h3 style={{
@@ -1805,20 +1853,40 @@ ${userPrompt}` }] }],
                               display: "-webkit-box", WebkitLineClamp: 2,
                               WebkitBoxOrient: "vertical", overflow: "hidden",
                             }}>{s.description}</p>
-                            <div style={{
-                              marginTop: 10, padding: "8px 0 0",
-                              borderTop: "1px solid #F0EBE4",
-                              fontSize: 12, fontWeight: 600, color: "#D4A574",
-                              fontFamily: "'DM Sans', sans-serif",
-                              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                            }}>
-                              Kies dit gerecht →
-                            </div>
                           </div>
                         </button>
                       );
                     })}
                   </div>
+                  {/* Action bar */}
+                  {selectedSuggestions.length > 0 && (
+                    <div style={{ animation: "fadeIn 0.2s ease", marginTop: 4 }}>
+                      <button onClick={processSelectedSuggestions}
+                        style={{
+                          width: "100%", padding: "16px", borderRadius: 14, border: "none",
+                          background: "linear-gradient(135deg, #D4A574 0%, #C09060 50%, #A67B50 100%)",
+                          color: "#fff", fontFamily: "'DM Sans', sans-serif",
+                          fontSize: 15, fontWeight: 700, cursor: "pointer",
+                          boxShadow: "0 6px 24px rgba(212,165,116,0.35)",
+                          transition: "all 0.3s",
+                        }}
+                        onMouseEnter={(e) => e.target.style.boxShadow = "0 8px 32px rgba(212,165,116,0.45)"}
+                        onMouseLeave={(e) => e.target.style.boxShadow = "0 6px 24px rgba(212,165,116,0.35)"}
+                      >
+                        ✨ {selectedSuggestions.length === 1
+                          ? `"${suggestions[selectedSuggestions[0]].title}" uitwerken`
+                          : `${selectedSuggestions.length} recepten uitwerken`
+                        }
+                        {selectedSuggestions.length > 1 && " → weekplanner"}
+                      </button>
+                      <p style={{ fontSize: 11, color: "#B5A999", textAlign: "center", margin: "8px 0 0", fontFamily: "'DM Sans', sans-serif" }}>
+                        {selectedSuggestions.length > 1
+                          ? "Recepten worden uitgewerkt en je gaat naar de weekplanner"
+                          : "Tik op meerdere kaarten om ze samen in te plannen"
+                        }
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
