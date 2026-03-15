@@ -810,6 +810,32 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
                 padding: "6px 8px", borderRadius: 12, backdropFilter: "blur(10px)",
               }}
             >{recipe.favorite ? "❤️" : "🤍"}</button>
+            <button onClick={(e) => {
+              e.stopPropagation();
+              if (!showPlannerPicker) {
+                const t = new Date(); t.setHours(0,0,0,0);
+                setSelectedDays([t.toISOString().split("T")[0]]);
+                setSelectedMealType("diner");
+                setPlannerStatus("");
+              }
+              setShowPlannerPicker(!showPlannerPicker);
+            }}
+              style={{
+                background: showPlannerPicker ? "rgba(107,143,94,0.4)" : "rgba(255,255,255,0.2)",
+                border: "none", cursor: "pointer",
+                padding: "6px 8px", borderRadius: 12, backdropFilter: "blur(10px)",
+                transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="17" rx="3" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" fill="none" />
+                <line x1="3" y1="9" x2="21" y2="9" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" />
+                <line x1="8" y1="2.5" x2="8" y2="5.5" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="16" y1="2.5" x2="16" y2="5.5" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="12" y1="13" x2="12" y2="18" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="9.5" y1="15.5" x2="14.5" y2="15.5" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
             {!showConfirm ? (
               <button onClick={() => setShowConfirm(true)}
                 style={{
@@ -872,47 +898,17 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => {
-            if (!showPlannerPicker) {
-              const t = new Date(); t.setHours(0,0,0,0);
-              setSelectedDays([t.toISOString().split("T")[0]]);
-              setSelectedMealType("diner");
-              setPlannerStatus("");
-            }
-            setShowPlannerPicker(!showPlannerPicker);
+        <button onClick={() => setExpanded(!expanded)}
+          style={{
+            background: expanded ? "#8B6F4710" : "transparent", border: "1.5px solid #E2DAD0",
+            color: "#8B6F47", borderRadius: 12, width: "100%",
+            fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: "pointer",
+            padding: "10px 16px", fontWeight: 600, display: "flex", alignItems: "center",
+            justifyContent: "center", gap: 6, transition: "all 0.2s",
           }}
-            style={{
-              background: showPlannerPicker ? "#6B8F5E10" : "transparent",
-              border: showPlannerPicker ? "2px solid #6B8F5E" : "1.5px solid #E2DAD0",
-              borderRadius: 12, padding: "10px 14px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "all 0.2s", flexShrink: 0,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#6B8F5E"; e.currentTarget.style.background = "#6B8F5E08"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = showPlannerPicker ? "#6B8F5E" : "#E2DAD0"; e.currentTarget.style.background = showPlannerPicker ? "#6B8F5E10" : "transparent"; }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ display: "block" }}>
-              <rect x="3" y="4" width="18" height="17" rx="3" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" fill="none" />
-              <line x1="3" y1="9" x2="21" y2="9" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.5" />
-              <line x1="8" y1="2.5" x2="8" y2="5.5" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
-              <line x1="16" y1="2.5" x2="16" y2="5.5" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
-              <line x1="12" y1="13" x2="12" y2="18" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
-              <line x1="9.5" y1="15.5" x2="14.5" y2="15.5" stroke={showPlannerPicker ? "#5A7D4E" : "#8B6F47"} strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button onClick={() => setExpanded(!expanded)}
-            style={{
-              flex: 1, background: expanded ? "#8B6F4710" : "transparent", border: "1.5px solid #E2DAD0",
-              color: "#8B6F47", borderRadius: 12,
-              fontFamily: "'DM Sans', sans-serif", fontSize: 13, cursor: "pointer",
-              padding: "10px 16px", fontWeight: 600, display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 6, transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => { e.target.style.background = "#8B6F4715"; e.target.style.borderColor = "#8B6F47"; }}
-            onMouseLeave={(e) => { e.target.style.background = expanded ? "#8B6F4710" : "transparent"; e.target.style.borderColor = "#E2DAD0"; }}
-          >{expanded ? "Verberg details ▲" : "📖 Bekijk volledig recept ▼"}</button>
-        </div>
+          onMouseEnter={(e) => { e.target.style.background = "#8B6F4715"; e.target.style.borderColor = "#8B6F47"; }}
+          onMouseLeave={(e) => { e.target.style.background = expanded ? "#8B6F4710" : "transparent"; e.target.style.borderColor = "#E2DAD0"; }}
+        >{expanded ? "Verberg details ▲" : "📖 Bekijk volledig recept ▼"}</button>
 
         {showPlannerPicker && (() => {
           const _t = new Date(); _t.setHours(0, 0, 0, 0);
@@ -1640,7 +1636,9 @@ ${userPrompt}` }] }],
         )}
 
         {activeTab === "weekplanner" && (
-          <WeekPlanner user={user} recipes={recipes} />
+          <WeekPlanner user={user} recipes={recipes} pantry={pantry}
+            preferredSupermarket={profile?.preferred_supermarket || ""}
+            onNavigateToRecipes={(p) => { setPrompt(p); setActiveTab("recepten"); }} />
         )}
 
         {activeTab === "recepten" && (
