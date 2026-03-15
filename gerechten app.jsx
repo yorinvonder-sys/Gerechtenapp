@@ -3,6 +3,23 @@ import { supabase } from "./src/supabaseClient";
 import ProfilePage from "./src/ProfilePage.jsx";
 import WeekPlanner from "./src/WeekPlanner.jsx";
 
+const geminiCall = async (body) => {
+  const devKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (devKey) {
+    const model = body.model || "gemini-3-flash-preview";
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${devKey}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: body.contents, generationConfig: body.generationConfig }),
+    });
+    return res.json();
+  }
+  const res = await fetch("/api/gemini", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+};
+
 const CUISINES = ["Italiaans", "Aziatisch", "Mexicaans", "Frans", "Grieks", "Indiaas", "Japans", "Thais", "Hollands", "Amerikaans", "Midden-Oosters", "Afrikaans"];
 const DIETS = ["Vegetarisch", "Veganistisch", "Glutenvrij", "Lactosevrij", "Koolhydraatarm", "Eiwitrijk"];
 const TIMES = ["< 15 min", "15-30 min", "30-60 min", "> 60 min"];
@@ -199,13 +216,10 @@ function FridgeScanner({ onItemsDetected, existingItems }) {
     }, 2500);
 
     try {
-      const response = await fetch("/api/gemini", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { inlineData: { mimeType: mediaType, data: base64 } },
-            { text: `Analyseer deze foto van een koelkast/voorraad. Identificeer ALLE zichtbare producten. Maak voor elk product een inschatting van de hoeveelheid die er nog over is (in gram, ml, stuks, of een beschrijving zoals "half pak", "bijna op").
+      const data = await geminiCall({
+        contents: [{ parts: [
+          { inlineData: { mimeType: mediaType, data: base64 } },
+          { text: `Analyseer deze foto van een koelkast/voorraad. Identificeer ALLE zichtbare producten. Maak voor elk product een inschatting van de hoeveelheid die er nog over is (in gram, ml, stuks, of een beschrijving zoals "half pak", "bijna op").
 
 Bij doorzichtige verpakkingen of goed zichtbare producten: geef een zo precies mogelijke schatting.
 Bij ondoorzichtige verpakkingen: geef een schatting op basis van hoe vol/zwaar het eruitziet.
@@ -214,14 +228,11 @@ Categoriseer elk product in een van deze categorieën: Groente & Fruit, Vlees & 
 
 Antwoord ALLEEN met valid JSON in dit formaat, zonder markdown of backticks:
 {"items":[{"name":"productnaam","category":"categorie","quantity":"geschatte hoeveelheid","confidence":"hoog/middel/laag"}]}` }
-          ] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1000 },
-        }),
+        ] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1000 },
       });
 
       clearInterval(statusInterval);
-
-      const data = await response.json();
       if (data.error) throw new Error(data.error.message || "API fout");
 
       const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
@@ -1125,21 +1136,15 @@ export default function RecipeApp({ session }) {
     const servings = profile?.household_size || 2;
 
     try {
-      const response = await fetch("/api/gemini", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Bedenk 5 VERSCHILLENDE receptideeën in het Nederlands op basis van de wensen. Zorg voor variatie in keuken, bereidingswijze en smaakprofiel. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+      const data = await geminiCall({
+        contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Bedenk 5 VERSCHILLENDE receptideeën in het Nederlands op basis van de wensen. Zorg voor variatie in keuken, bereidingswijze en smaakprofiel. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
 [{"title":"naam gerecht","description":"korte appetijt-opwekkende beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","imageQuery":"english search term for this specific dish for image search"},{"title":"..."},...]
 Geef precies 5 items. De imageQuery moet een specifieke Engelse zoekterm zijn voor het gerecht (bijv. "pad thai noodles", "mushroom risotto").
 
 Gebruikerswensen:
 ${userPrompt}` }] }],
-          generationConfig: { temperature: 0.9, maxOutputTokens: 1200 },
-        }),
+        generationConfig: { temperature: 0.9, maxOutputTokens: 1200 },
       });
-
-      const data = await response.json();
       if (data.error) throw new Error(data.error.message || "API fout");
       const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
@@ -1162,11 +1167,8 @@ ${userPrompt}` }] }],
     const userPrompt = buildUserPrompt();
 
     try {
-      const response = await fetch("/api/gemini", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Werk het gegeven receptidee uit tot een volledig recept in het Nederlands, voor ${servings} personen. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
+      const data = await geminiCall({
+        contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. Werk het gegeven receptidee uit tot een volledig recept in het Nederlands, voor ${servings} personen. Als er allergieën of dislikes zijn opgegeven, gebruik die ingrediënten NOOIT. Als er producten worden meegegeven die de gebruiker in huis heeft, maak daar creatief gebruik van. Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
 {"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingrediënt 1","ingrediënt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}
 
 Werk dit receptidee uit:
@@ -1176,11 +1178,8 @@ Keuken: ${suggestion.cuisine}
 
 Context van de gebruiker:
 ${userPrompt}` }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
-        }),
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
       });
-
-      const data = await response.json();
       if (data.error) throw new Error(data.error.message || "API fout");
       const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
