@@ -151,8 +151,23 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [activeStore, setActiveStore] = useState(preferredSupermarket || (preferredSupermarkets.length > 0 ? preferredSupermarkets[0] : ""));
+  const [selectedDayIdx, setSelectedDayIdx] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dates = getWeekDates(0);
+    const idx = dates.findIndex(d => d.getTime() === today.getTime());
+    return idx >= 0 ? idx : 0;
+  });
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+
+  // Reset selectedDayIdx bij week-wissel: vandaag als in de week, anders 0
+  useEffect(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const idx = weekDates.findIndex(d => d.getTime() === today.getTime());
+    setSelectedDayIdx(idx >= 0 ? idx : 0);
+  }, [weekOffset]);
 
   useEffect(() => {
     loadMealPlans();
@@ -745,31 +760,59 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
       )}
 
 
-      {/* Lege-state */}
-      {!loading && mealPlans.length === 0 && (
-        <div style={{
-          background: "#FFFCF7", borderRadius: 20, padding: "28px 24px",
-          boxShadow: "0 2px 12px rgba(139,111,71,0.06)", marginBottom: 16,
-          border: "1px solid #EDE8E0", textAlign: "center",
-        }}>
-          <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>🍽️</span>
-          <p style={{
-            fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
-            margin: "0 0 4px",
-          }}>Plan je eerste maaltijd!</p>
-          <p style={{
-            fontSize: 13, color: "#A89B8A", margin: 0,
-            fontFamily: "'DM Sans', sans-serif",
-          }}>Tik op een dag hieronder om te beginnen</p>
-        </div>
-      )}
 
-      {/* Weekoverzicht */}
-      {weekDates.map((date, dayIdx) => {
+      {/* Dag-selector */}
+      <div style={{
+        display: "flex", gap: 6, marginBottom: 12,
+        overflowX: "auto", WebkitOverflowScrolling: "touch",
+        paddingBottom: 2,
+      }}>
+        {weekDates.map((date, dayIdx) => {
+          const today = isToday(date);
+          const isSelected = dayIdx === selectedDayIdx;
+          const hasMeals = MEAL_TYPES.some(mt => getMeal(date, mt.id));
+          return (
+            <button key={formatDate(date)} onClick={() => setSelectedDayIdx(dayIdx)}
+              style={{
+                flex: 1, minWidth: 44, padding: "8px 4px 10px", borderRadius: 12,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                border: isSelected ? "none" : today ? "1.5px solid #D4A574" : "1px solid #E2DAD0",
+                background: isSelected
+                  ? "#D4A574"
+                  : today ? "#D4A57412" : "transparent",
+                cursor: "pointer", transition: "all 0.2s", position: "relative",
+              }}
+            >
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                color: isSelected ? "#fff" : today ? "#D4A574" : "#A89B8A",
+                fontFamily: "'DM Sans', sans-serif", lineHeight: 1,
+              }}>{DAY_SHORT[dayIdx]}</span>
+              <span style={{
+                fontSize: 15, fontWeight: 700,
+                color: isSelected ? "#fff" : "#3D2E1F",
+                fontFamily: "'DM Sans', sans-serif", lineHeight: 1.2,
+              }}>{date.getDate()}</span>
+              {hasMeals && (
+                <span style={{
+                  width: 5, height: 5, borderRadius: "50%",
+                  background: isSelected ? "#fff" : "#6B8F5E",
+                  display: "block", marginTop: 1,
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Detail-view geselecteerde dag */}
+      {(() => {
+        const date = weekDates[selectedDayIdx];
+        const dayIdx = selectedDayIdx;
         const today = isToday(date);
         return (
-          <div key={formatDate(date)} style={{
-            background: today ? "#FFFCF7" : "#FFFCF7",
+          <div style={{
+            background: "#FFFCF7",
             borderRadius: 20, padding: "16px 18px", marginBottom: 10,
             boxShadow: today ? "0 4px 28px rgba(139,111,71,0.12)" : "0 2px 12px rgba(139,111,71,0.06)",
             border: today ? "2px solid #D4A574" : "1px solid #EDE8E0",
@@ -951,7 +994,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
             </div>
           </div>
         );
-      })}
+      })()}
 
       {/* Seizoenstip */}
       {onNavigateToRecipes && (() => {
