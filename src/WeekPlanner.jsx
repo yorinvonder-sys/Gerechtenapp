@@ -213,7 +213,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
     try {
       const { data } = await supabase
         .from("meal_plans")
-        .select("*, recipes(title, cuisine, prep_time), profiles:user_id(display_name)")
+        .select("*, recipes(title, cuisine, prep_time)")
         .gte("date", startDate)
         .lte("date", endDate)
         .in("user_id", [...userIds]);
@@ -229,7 +229,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
     // Bidirectioneel: toon zowel mensen die je hebt uitgenodigd als mensen die jou hebben uitgenodigd
     const { data } = await supabase
       .from("shared_meal_plans")
-      .select("owner_id, shared_with, profiles_owner:owner_id(display_name), profiles_shared:shared_with(display_name)")
+      .select("owner_id, shared_with")
       .or(`owner_id.eq.${user.id},shared_with.eq.${user.id}`);
     setSharedUsers(data || []);
   };
