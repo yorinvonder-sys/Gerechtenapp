@@ -2403,32 +2403,17 @@ ${userPrompt}` }] }],
                           </div>
                         </div>
 
-                        {/* Card stack - horizontal scrollable fan */}
+                        {/* Card hand - stacked fan like cards in hand */}
                         {groupRecipes.length === 1 ? (
                           <RecipeCard key={groupRecipes[0].id} recipe={groupRecipes[0]} onToggleFav={toggleFav}
                             onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
                             onMarkCooked={markAsCooked} collections={collections}
                             onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
                         ) : (
-                          <div style={{
-                            display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8,
-                            scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch",
-                            scrollbarWidth: "none", msOverflowStyle: "none",
-                            margin: "0 -16px", padding: "4px 16px 12px",
-                          }}>
-                            {groupRecipes.map((recipe, idx) => (
-                              <div key={recipe.id} style={{
-                                flex: `0 0 ${Math.min(85, 95 - groupRecipes.length * 2)}%`,
-                                scrollSnapAlign: "start",
-                                transition: "transform 0.3s ease",
-                              }}>
-                                <RecipeCard recipe={recipe} onToggleFav={toggleFav}
-                                  onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
-                                  onMarkCooked={markAsCooked} collections={collections}
-                                  onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
-                              </div>
-                            ))}
-                          </div>
+                          <CardHand recipes={groupRecipes} onToggleFav={toggleFav}
+                            onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
+                            onMarkCooked={markAsCooked} collections={collections}
+                            onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
                         )}
                       </div>
                     );
