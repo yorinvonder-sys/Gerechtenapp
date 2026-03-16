@@ -2427,6 +2427,15 @@ ${userPrompt}` }] }],
 
                   {/* Nav buttons */}
                   <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => { setPrompt("Verras me met een lekker gerecht"); generateRecipe(); }}
+                      style={{
+                        padding: "14px 18px", borderRadius: 12,
+                        border: "1.5px solid #D4A574", background: "#D4A57410",
+                        color: "#8B6F47", fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
+                        cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
+                        display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >🎲 Verras me</button>
                     <button onClick={() => setWizardStep(1)}
                       style={{
                         flex: 1, padding: "14px", borderRadius: 12, border: "none",
