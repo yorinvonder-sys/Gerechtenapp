@@ -2236,7 +2236,7 @@ ${userPrompt}` }] }],
                     background: "linear-gradient(135deg, #D4A574, #C09060)",
                     borderRadius: 12, padding: "6px 10px", fontSize: 20,
                   }}>✨</span>
-                  {choosingRecipe ? "Kies je gerecht" : loading ? "Even geduld..." : wizardStep === 0 ? "Wat wil je eten?" : wizardStep === 1 ? "Verfijn je keuze" : "Bijna klaar!"}
+                  {choosingRecipe ? "Kies je gerecht" : loading ? "Even geduld..." : wizardStep === 0 ? "Kies je stijl" : wizardStep === 1 ? "Wat wil je eten?" : "Bijna klaar!"}
                 </h2>
                 {/* Progress dots */}
                 {!choosingRecipe && !loading && (
@@ -2258,8 +2258,8 @@ ${userPrompt}` }] }],
                 )}
               </div>
 
-              {/* STEP 0: Prompt & URL import */}
-              {wizardStep === 0 && !choosingRecipe && !loading && (
+              {/* STEP 1: Prompt & URL import */}
+              {wizardStep === 1 && !choosingRecipe && !loading && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
                   {/* URL Import */}
                   <div style={{ marginBottom: 14 }}>
@@ -2325,7 +2325,15 @@ ${userPrompt}` }] }],
 
                   {/* Next / Skip to generate */}
                   <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-                    <button onClick={() => setWizardStep(1)}
+                    <button onClick={() => setWizardStep(0)}
+                      style={{
+                        padding: "14px 18px", borderRadius: 12,
+                        border: "1.5px solid #E2DAD0", background: "transparent",
+                        color: "#8C7E6F", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                        cursor: "pointer", transition: "all 0.2s",
+                      }}
+                    >← Terug</button>
+                    <button onClick={() => setWizardStep(2)}
                       disabled={!prompt.trim()}
                       style={{
                         flex: 1, padding: "14px", borderRadius: 12, border: "none",
@@ -2347,8 +2355,8 @@ ${userPrompt}` }] }],
                 </div>
               )}
 
-              {/* STEP 1: Keuken & voorkeuren */}
-              {wizardStep === 1 && !choosingRecipe && !loading && (
+              {/* STEP 0: Keuken & voorkeuren */}
+              {wizardStep === 0 && !choosingRecipe && !loading && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
                   {/* Cuisine as visual mini-cards */}
                   <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 10px", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
@@ -2419,15 +2427,7 @@ ${userPrompt}` }] }],
 
                   {/* Nav buttons */}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => setWizardStep(0)}
-                      style={{
-                        padding: "14px 18px", borderRadius: 12,
-                        border: "1.5px solid #E2DAD0", background: "transparent",
-                        color: "#8C7E6F", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
-                        cursor: "pointer", transition: "all 0.2s",
-                      }}
-                    >← Terug</button>
-                    <button onClick={() => setWizardStep(2)}
+                    <button onClick={() => setWizardStep(1)}
                       style={{
                         flex: 1, padding: "14px", borderRadius: 12, border: "none",
                         background: "linear-gradient(135deg, #D4A574, #C09060)",
