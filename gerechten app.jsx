@@ -1460,7 +1460,7 @@ export default function RecipeApp({ session }) {
           supabase.from("profiles").select("*").eq("id", user.id).single(),
           supabase.from("shared_recipes").select("recipe_id, recipes(*)").eq("shared_with", user.id),
           supabase.from("recipe_collections").select("*, recipe_collection_items(recipe_id)").eq("user_id", user.id).order("created_at", { ascending: false }),
-          supabase.from("public_recipes").select("*").limit(50).order("created_at", { ascending: false }),
+          supabase.from("public_recipes").select("*").limit(60).order("title", { ascending: true }),
         ]);
         if (recipesRes.data) {
           const ownRecipes = recipesRes.data.map(r => ({
@@ -1829,7 +1829,7 @@ ${userPrompt}` }] }],
   };
 
   const loadPublicRecipes = async (filters = publicFilter, page = 0) => {
-    let query = supabase.from("public_recipes").select("*").order("created_at", { ascending: false }).range(page * 50, (page + 1) * 50 - 1);
+    let query = supabase.from("public_recipes").select("*").order("title", { ascending: true }).range(page * 60, (page + 1) * 60 - 1);
     if (filters.cuisine) query = query.eq("cuisine", filters.cuisine);
     if (filters.dietary) query = query.contains("dietary", [filters.dietary]);
     if (filters.season) query = query.contains("season", [filters.season]);
