@@ -5,12 +5,12 @@ const CUISINES = ["Italiaans", "Aziatisch", "Mexicaans", "Frans", "Grieks", "Ind
 const DIETS = ["Vegetarisch", "Veganistisch", "Glutenvrij", "Lactosevrij", "Koolhydraatarm", "Eiwitrijk"];
 
 const SUPERMARKETS = [
-  { id: "albert_heijn", name: "Albert Heijn", color: "#00A0E2", logo: "🔵" },
-  { id: "jumbo", name: "Jumbo", color: "#FFD700", logo: "🟡" },
-  { id: "lidl", name: "Lidl", color: "#0050AA", logo: "🟦" },
-  { id: "aldi", name: "Aldi", color: "#E30613", logo: "🟥" },
-  { id: "plus", name: "PLUS", color: "#E87C1E", logo: "🟧" },
-  { id: "dirk", name: "Dirk", color: "#D4001A", logo: "🔴" },
+  { id: "albert_heijn", name: "Albert Heijn", color: "#00A0E2", logo: "/images/supermarkets/albert_heijn.webp" },
+  { id: "jumbo", name: "Jumbo", color: "#FFD700", logo: "/images/supermarkets/jumbo.webp" },
+  { id: "lidl", name: "Lidl", color: "#0050AA", logo: "/images/supermarkets/lidl.webp" },
+  { id: "aldi", name: "Aldi", color: "#E30613", logo: "/images/supermarkets/aldi.webp" },
+  { id: "plus", name: "PLUS", color: "#E87C1E", logo: "/images/supermarkets/plus.webp" },
+  { id: "dirk", name: "Dirk", color: "#D4001A", logo: "/images/supermarkets/dirk.webp" },
 ];
 
 export default function ProfilePage({ user, profile, onProfileUpdate }) {
@@ -213,7 +213,7 @@ export default function ProfilePage({ user, profile, onProfileUpdate }) {
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                   }}
                 >
-                  <span style={{ fontSize: 22 }}>{sm.logo}</span>
+                  <img src={sm.logo} alt={sm.name} style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 6 }} />
                   <span style={{
                     fontSize: 12, fontWeight: selected ? 700 : 500,
                     color: selected ? sm.color : "#8C7E6F",

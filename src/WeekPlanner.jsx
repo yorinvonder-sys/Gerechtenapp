@@ -13,7 +13,7 @@ const DAY_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 // Supermarkt gangpad-indeling: volgorde waarin je door de winkel loopt
 const SUPERMARKET_AISLES = {
   albert_heijn: {
-    name: "Albert Heijn", color: "#00A0E2", logo: "🔵",
+    name: "Albert Heijn", color: "#00A0E2", logo: "/images/supermarkets/albert_heijn.webp",
     aisles: [
       { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
       { name: "Brood & Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
@@ -31,7 +31,7 @@ const SUPERMARKET_AISLES = {
     ],
   },
   jumbo: {
-    name: "Jumbo", color: "#FFD700", logo: "🟡",
+    name: "Jumbo", color: "#FFD700", logo: "/images/supermarkets/jumbo.webp",
     aisles: [
       { name: "AGF (Groente & Fruit)", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
       { name: "Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
@@ -47,7 +47,7 @@ const SUPERMARKET_AISLES = {
     ],
   },
   lidl: {
-    name: "Lidl", color: "#0050AA", logo: "🟦",
+    name: "Lidl", color: "#0050AA", logo: "/images/supermarkets/lidl.webp",
     aisles: [
       { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
       { name: "Brood", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
@@ -62,7 +62,7 @@ const SUPERMARKET_AISLES = {
     ],
   },
   aldi: {
-    name: "Aldi", color: "#E30613", logo: "🟥",
+    name: "Aldi", color: "#E30613", logo: "/images/supermarkets/aldi.webp",
     aisles: [
       { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
       { name: "Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
@@ -76,7 +76,7 @@ const SUPERMARKET_AISLES = {
     ],
   },
   plus: {
-    name: "PLUS", color: "#E87C1E", logo: "🟧",
+    name: "PLUS", color: "#E87C1E", logo: "/images/supermarkets/plus.webp",
     aisles: [
       { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
       { name: "Brood & Banket", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
@@ -90,7 +90,7 @@ const SUPERMARKET_AISLES = {
     ],
   },
   dirk: {
-    name: "Dirk", color: "#D4001A", logo: "🔴",
+    name: "Dirk", color: "#D4001A", logo: "/images/supermarkets/dirk.webp",
     aisles: [
       { name: "Groente & Fruit", emoji: "🥦", keywords: ["sla", "tomaat", "tomaten", "ui", "uien", "knoflook", "paprika", "wortel", "aardappel", "aardappelen", "champignon", "courgette", "broccoli", "spinazie", "komkommer", "appel", "banaan", "citroen", "limoen", "avocado", "gember", "prei", "selderij", "peterselie", "bieslook", "basilicum", "munt", "koriander", "rozemarijn", "tijm", "dille", "lente-ui", "groente", "fruit", "sjalot", "aubergine", "bloemkool", "boerenkool", "andijvie", "rucola", "mais"] },
       { name: "Bakkerij", emoji: "🍞", keywords: ["brood", "toast", "tortilla", "wrap", "pita", "naan", "ciabatta", "stokbrood", "croissant", "brioche", "panini"] },
@@ -425,7 +425,8 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                   fontSize: 11, fontWeight: 600, color: sm.color,
                   background: sm.color + "15", padding: "3px 10px", borderRadius: 10,
                   fontFamily: "'DM Sans', sans-serif",
-                }}>{sm.logo} {sm.name}-route</span>
+                                  display: "flex", alignItems: "center", gap: 4,
+                }}><img src={sm.logo} alt={sm.name} style={{ width: 16, height: 16, objectFit: "contain" }} /> {sm.name}-route</span>
               ) : null;
             })()}
           </div>
