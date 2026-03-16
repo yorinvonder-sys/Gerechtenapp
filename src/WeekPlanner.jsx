@@ -149,6 +149,8 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
   const [sharedUsers, setSharedUsers] = useState([]);
   const [showGroceries, setShowGroceries] = useState(false);
   const [expandedMeal, setExpandedMeal] = useState(null);
+  const [movingMeal, setMovingMeal] = useState(null); // { meal, fromDate, fromMealType }
+  const [showMealActions, setShowMealActions] = useState(null); // meal id
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [activeStore, setActiveStore] = useState(preferredSupermarket || (preferredSupermarkets.length > 0 ? preferredSupermarkets[0] : ""));
@@ -273,6 +275,66 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
       .from("meal_plans")
       .delete()
       .eq("id", meal.id);
+    await loadMealPlans();
+  };
+
+  const moveMealTo = async (toDate, toMealType) => {
+    if (!movingMeal) return;
+    const { meal } = movingMeal;
+    // Remove from old position
+    await supabase.from("meal_plans").delete().eq("id", meal.id);
+    // Insert at new position
+    await supabase.from("meal_plans").upsert({
+      user_id: user.id,
+      date: formatDate(toDate),
+      meal_type: toMealType,
+      recipe_id: meal.recipe_id,
+      custom_meal: meal.custom_meal,
+    }, { onConflict: "user_id,date,meal_type" });
+    setMovingMeal(null);
+    await loadMealPlans();
+  };
+
+  const copyMealTo = async (meal, toDate, toMealType) => {
+    await supabase.from("meal_plans").upsert({
+      user_id: user.id,
+      date: formatDate(toDate),
+      meal_type: toMealType,
+      recipe_id: meal.recipe_id,
+      custom_meal: meal.custom_meal,
+    }, { onConflict: "user_id,date,meal_type" });
+    setShowMealActions(null);
+    await loadMealPlans();
+  };
+
+  const clearWeek = async () => {
+    const startDate = formatDate(weekDates[0]);
+    const endDate = formatDate(weekDates[6]);
+    await supabase.from("meal_plans").delete()
+      .eq("user_id", user.id)
+      .gte("date", startDate)
+      .lte("date", endDate);
+    await loadMealPlans();
+  };
+
+  const repeatLastWeek = async () => {
+    const prevWeekDates = getWeekDates(weekOffset - 1);
+    const prevStart = formatDate(prevWeekDates[0]);
+    const prevEnd = formatDate(prevWeekDates[6]);
+    const { data: prevMeals } = await supabase.from("meal_plans")
+      .select("*").eq("user_id", user.id)
+      .gte("date", prevStart).lte("date", prevEnd);
+    if (!prevMeals?.length) return;
+    const newMeals = prevMeals.map((m, i) => ({
+      user_id: user.id,
+      date: formatDate(weekDates[new Date(m.date).getDay() === 0 ? 6 : new Date(m.date).getDay() - 1]),
+      meal_type: m.meal_type,
+      recipe_id: m.recipe_id,
+      custom_meal: m.custom_meal,
+    }));
+    for (const meal of newMeals) {
+      await supabase.from("meal_plans").upsert(meal, { onConflict: "user_id,date,meal_type" });
+    }
     await loadMealPlans();
   };
 
@@ -435,7 +497,43 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
             cursor: "pointer", transition: "all 0.2s",
           }}>👥 Delen</button>
         </div>
+        {/* Week actions */}
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button onClick={repeatLastWeek} style={{
+            flex: 1, padding: "8px", borderRadius: 10, border: "1.5px solid #E2DAD0",
+            background: "transparent", color: "#8C7E6F", fontSize: 12, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", cursor: "pointer", transition: "all 0.2s",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+          }}>🔄 Vorige week herhalen</button>
+          <button onClick={() => { if (window.confirm("Weet je zeker dat je de hele week wilt wissen?")) clearWeek(); }} style={{
+            padding: "8px 14px", borderRadius: 10, border: "1.5px solid #C85A3D30",
+            background: "transparent", color: "#C85A3D", fontSize: 12, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", cursor: "pointer", transition: "all 0.2s",
+            display: "flex", alignItems: "center", gap: 4,
+          }}>🗑️ Wis week</button>
+        </div>
       </div>
+
+      {/* Moving mode banner */}
+      {movingMeal && (
+        <div style={{
+          padding: "12px 16px", borderRadius: 14,
+          background: "linear-gradient(135deg, #6B8F5E10, #6B8F5E08)",
+          border: "1.5px solid #6B8F5E",
+          marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between",
+          animation: "fadeIn 0.2s ease",
+        }}>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F" }}>
+            <strong>↗️ Verplaatsen:</strong> {movingMeal.meal.recipes?.title || movingMeal.meal.custom_meal}
+            <br /><span style={{ fontSize: 11, color: "#6B8F5E" }}>Klik op een leeg slot om te plaatsen</span>
+          </div>
+          <button onClick={() => setMovingMeal(null)} style={{
+            background: "none", border: "1.5px solid #E2DAD0", borderRadius: 8,
+            padding: "6px 12px", color: "#8C7E6F", fontSize: 12, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+          }}>Annuleer</button>
+        </div>
+      )}
 
       {/* Boodschappenlijst */}
       {showGroceries && (
@@ -863,18 +961,24 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                   <div key={mt.id}>
                     <div
                       onClick={() => {
+                        // If we're in moving mode, place the meal here
+                        if (movingMeal) {
+                          moveMealTo(date, mt.id);
+                          return;
+                        }
                         if (meal && meal.recipes) {
                           setExpandedMeal(expandedMeal?.id === meal.id ? null : meal);
                           return;
                         }
+                        if (meal) return;
                         setShowPicker(isPicking ? null : { date: formatDate(date), mealType: mt.id, dateObj: date });
                         setSearchQuery("");
                       }}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
                         padding: "10px 12px", borderRadius: 12,
-                        background: meal ? "#FAF7F2" : isPicking ? "#8B6F4708" : "transparent",
-                        border: isPicking ? "1.5px solid #D4A574" : meal ? "1px solid #EDE8E0" : "1px dashed #E2DAD0",
+                        background: movingMeal && !meal ? "#6B8F5E10" : meal ? "#FAF7F2" : isPicking ? "#8B6F4708" : "transparent",
+                        border: movingMeal && !meal ? "1.5px dashed #6B8F5E" : isPicking ? "1.5px solid #D4A574" : meal ? "1px solid #EDE8E0" : "1px dashed #E2DAD0",
                         cursor: "pointer",
                         transition: "all 0.2s",
                       }}
@@ -901,25 +1005,77 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                             )}
                           </div>
                         )}
-                        {!meal && !isPicking && (
+                        {!meal && !isPicking && movingMeal && (
+                          <p style={{
+                            fontSize: 12, color: "#6B8F5E", margin: "2px 0 0",
+                            fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
+                          }}>↓ Hier plaatsen</p>
+                        )}
+                        {!meal && !isPicking && !movingMeal && (
                           <p style={{
                             fontSize: 12, color: "#C5BAA8", margin: "2px 0 0",
                             fontFamily: "'DM Sans', sans-serif",
                           }}>+ Voeg toe</p>
                         )}
                       </div>
-                      {meal && (
-                        <button onClick={(e) => { e.stopPropagation(); removeMeal(date, mt.id); }}
+                      {meal && meal.user_id === user.id && (
+                        <button onClick={(e) => { e.stopPropagation(); setShowMealActions(showMealActions === meal.id ? null : meal.id); }}
                           style={{
-                            background: "none", border: "none", fontSize: 14,
-                            color: "#C85A3D", cursor: "pointer", padding: "4px",
-                            opacity: 0.5, transition: "opacity 0.2s",
+                            background: "none", border: "none", fontSize: 16,
+                            color: "#A89B8A", cursor: "pointer", padding: "4px",
+                            transition: "color 0.2s",
                           }}
-                          onMouseEnter={(e) => e.target.style.opacity = 1}
-                          onMouseLeave={(e) => e.target.style.opacity = 0.5}
-                        >✕</button>
+                          onMouseEnter={(e) => e.target.style.color = "#8B6F47"}
+                          onMouseLeave={(e) => e.target.style.color = "#A89B8A"}
+                        >⋯</button>
                       )}
                     </div>
+
+                    {/* Meal action menu */}
+                    {showMealActions === meal?.id && meal && (
+                      <div style={{
+                        marginTop: 6, padding: "8px", borderRadius: 12,
+                        background: "#FAF7F2", border: "1px solid #EDE8E0",
+                        display: "flex", gap: 6, flexWrap: "wrap",
+                        animation: "fadeIn 0.15s ease",
+                      }}>
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          setMovingMeal({ meal, fromDate: formatDate(date), fromMealType: mt.id });
+                          setShowMealActions(null);
+                        }} style={{
+                          flex: 1, padding: "8px 10px", borderRadius: 10, border: "1.5px solid #E2DAD0",
+                          background: "#fff", color: "#3D2E1F", fontSize: 12, fontWeight: 600,
+                          fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 4, justifyContent: "center",
+                          transition: "all 0.15s", minWidth: 0,
+                        }}>↗️ Verplaats</button>
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          // Copy to tomorrow same meal type
+                          const tomorrow = new Date(date);
+                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          copyMealTo(meal, tomorrow, mt.id);
+                        }} style={{
+                          flex: 1, padding: "8px 10px", borderRadius: 10, border: "1.5px solid #E2DAD0",
+                          background: "#fff", color: "#3D2E1F", fontSize: 12, fontWeight: 600,
+                          fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 4, justifyContent: "center",
+                          transition: "all 0.15s", minWidth: 0,
+                        }}>📋 Kopieer morgen</button>
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          removeMeal(date, mt.id);
+                          setShowMealActions(null);
+                        }} style={{
+                          flex: 1, padding: "8px 10px", borderRadius: 10, border: "1.5px solid #C85A3D40",
+                          background: "#C85A3D08", color: "#C85A3D", fontSize: 12, fontWeight: 600,
+                          fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 4, justifyContent: "center",
+                          transition: "all 0.15s", minWidth: 0,
+                        }}>🗑️ Verwijder</button>
+                      </div>
+                    )}
 
                     {/* Recept detail view */}
                     {expandedMeal?.id === meal?.id && meal?.recipes && (
