@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "./supabaseClient";
 
-export default function AuthPage() {
+export default function AuthPage({ notice = "" }) {
   const [mode, setMode] = useState("login"); // login | register | forgot
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,6 +117,21 @@ export default function AuthPage() {
           }}>
             {mode === "login" ? "Inloggen" : mode === "register" ? "Account aanmaken" : "Wachtwoord vergeten"}
           </h2>
+
+          {notice && (
+            <p style={{
+              background: "#F5EDE3",
+              border: "1px solid #E2DAD0",
+              borderRadius: 12,
+              color: "#6B5D4F",
+              fontSize: 13,
+              lineHeight: 1.5,
+              margin: "0 0 18px",
+              padding: "12px 14px",
+            }}>
+              {notice}
+            </p>
+          )}
 
           {/* Google OAuth button */}
           {mode !== "forgot" && (

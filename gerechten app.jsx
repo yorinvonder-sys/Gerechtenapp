@@ -1705,6 +1705,7 @@ ${userPrompt}` }] }],
       minHeight: "100vh",
       background: "linear-gradient(165deg, #F5EDE3 0%, #EDE3D5 50%, #E8DFD1 100%)",
       fontFamily: "'DM Sans', sans-serif",
+      overflowX: "hidden",
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
@@ -1782,7 +1783,7 @@ ${userPrompt}` }] }],
         </div>
       </div>
 
-      <div style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px 110px" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px 144px" }}>
 
         {activeTab === "voorraad" && (
           <PantrySection pantry={pantry} onAdd={addPantryItem} onAddMultiple={addPantryItems}
@@ -2590,7 +2591,8 @@ ${userPrompt}` }] }],
         WebkitBackdropFilter: "blur(20px)",
         borderTop: "1px solid #E2DAD0",
         boxShadow: "0 -2px 20px rgba(0,0,0,0.05)",
-        padding: "6px 16px env(safe-area-inset-bottom, 10px)",
+        padding: "6px 16px 10px",
+        paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
         zIndex: 1000,
       }}>
         <div style={{

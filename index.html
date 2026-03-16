@@ -8,7 +8,15 @@
   <title>Onze Recepten — Lauran & Yorin</title>
   <style>
     * { margin: 0; padding: 0; }
-    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    html, body, #root { min-height: 100%; }
+    html { background: #F5EDE3; }
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-y: auto;
+      overflow-x: hidden;
+      touch-action: pan-y;
+    }
   </style>
 </head>
 <body>
