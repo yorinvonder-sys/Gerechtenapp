@@ -137,7 +137,7 @@ function isToday(d) {
   return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
-export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRecipes, preferredSupermarket = "" }) {
+export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRecipes, preferredSupermarket = "", preferredSupermarkets = [] }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [mealPlans, setMealPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -150,6 +150,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
   const [showGroceries, setShowGroceries] = useState(false);
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [activeStore, setActiveStore] = useState(preferredSupermarket || (preferredSupermarkets.length > 0 ? preferredSupermarkets[0] : ""));
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
@@ -174,10 +175,13 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
     const endDate = formatDate(weekDates[6]);
 
     // Haal gedeelde gebruiker-IDs op (bidirectioneel)
-    const { data: shares } = await supabase
+    const { data: shares, error: sharesError } = await supabase
       .from("shared_meal_plans")
       .select("owner_id, shared_with")
       .or(`owner_id.eq.${user.id},shared_with.eq.${user.id}`);
+    if (sharesError) {
+      console.warn("loadSharedMealPlans failed:", sharesError);
+    }
 
     const userIds = new Set([user.id]);
     (shares || []).forEach((s) => {
@@ -185,13 +189,24 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
       userIds.add(s.shared_with);
     });
 
-    const { data } = await supabase
-      .from("meal_plans")
-      .select("*, recipes(title, cuisine, prep_time), profiles:user_id(display_name)")
-      .gte("date", startDate)
-      .lte("date", endDate)
-      .in("user_id", [...userIds]);
-    setMealPlans(data || []);
+    if (userIds.size === 0) {
+      setMealPlans([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data } = await supabase
+        .from("meal_plans")
+        .select("*, recipes(title, cuisine, prep_time), profiles:user_id(display_name)")
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .in("user_id", [...userIds]);
+      setMealPlans(data || []);
+    } catch (e) {
+      console.warn("loadMealPlans failed:", e);
+      setMealPlans([]);
+    }
     setLoading(false);
   };
 
@@ -316,7 +331,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
       }
     });
     const pantryNames = (pantry || []).map((p) => p.name.toLowerCase().trim());
-    const supermarket = SUPERMARKET_AISLES[preferredSupermarket];
+    const supermarket = SUPERMARKET_AISLES[activeStore];
     return Object.values(ingredients)
       .map((item) => {
         const keyLower = item.name.toLowerCase().trim();
@@ -354,7 +369,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
   })();
 
   return (
-    <div>
+    <div style={{ paddingBottom: 100 }}>
       {/* Week header */}
       <div style={{
         background: "#FFFCF7", borderRadius: 24, padding: "20px 24px",
@@ -413,22 +428,37 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
           boxShadow: "0 4px 28px rgba(139,111,71,0.10)", marginBottom: 16,
           border: "1px solid #EDE8E0", animation: "fadeIn 0.3s ease",
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ marginBottom: 12 }}>
             <h4 style={{
               fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
-              margin: 0, display: "flex", alignItems: "center", gap: 8,
+              margin: "0 0 10px", display: "flex", alignItems: "center", gap: 8,
             }}>🛒 Boodschappenlijst</h4>
-            {(() => {
-              const sm = SUPERMARKET_AISLES[preferredSupermarket];
-              return sm ? (
-                <span style={{
-                  fontSize: 11, fontWeight: 600, color: sm.color,
-                  background: sm.color + "15", padding: "3px 10px", borderRadius: 10,
-                  fontFamily: "'DM Sans', sans-serif",
-                                  display: "flex", alignItems: "center", gap: 4,
-                }}><img src={sm.logo} alt={sm.name} style={{ width: 16, height: 16, objectFit: "contain" }} /> {sm.name}-route</span>
-              ) : null;
-            })()}
+            {/* Winkel-selector */}
+            {(preferredSupermarkets.length > 0 || preferredSupermarket) && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {(preferredSupermarkets.length > 0 ? preferredSupermarkets : [preferredSupermarket].filter(Boolean)).map(storeId => {
+                  const sm = SUPERMARKET_AISLES[storeId];
+                  if (!sm) return null;
+                  const isActive = activeStore === storeId;
+                  return (
+                    <button key={storeId} onClick={() => setActiveStore(storeId)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 5,
+                        padding: "5px 12px", borderRadius: 10,
+                        border: isActive ? `2px solid ${sm.color}` : "1.5px solid #E2DAD0",
+                        background: isActive ? sm.color + "15" : "transparent",
+                        cursor: "pointer", transition: "all 0.2s",
+                        fontSize: 12, fontWeight: isActive ? 700 : 500,
+                        color: isActive ? sm.color : "#8C7E6F",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}>
+                      <img src={sm.logo} alt={sm.name} style={{ width: 18, height: 18, objectFit: "contain", borderRadius: 3 }} />
+                      {sm.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           {groceryList.length === 0 ? (
             <p style={{ fontSize: 13, color: "#A89B8A", margin: 0 }}>
@@ -444,7 +474,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
               </p>
 
               {/* Gegroepeerd per gangpad als supermarkt is geselecteerd */}
-              {preferredSupermarket && SUPERMARKET_AISLES[preferredSupermarket] ? (() => {
+              {preferredSupermarket && SUPERMARKET_AISLES[activeStore] ? (() => {
                 const toBuy = groceryList.filter(i => !i.inPantry);
                 const inStock = groceryList.filter(i => i.inPantry);
                 const grouped = {};
@@ -565,7 +595,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
               {groceryList.some((i) => !i.inPantry) && (
                 <button
                   onClick={() => {
-                    const sm = SUPERMARKET_AISLES[preferredSupermarket];
+                    const sm = SUPERMARKET_AISLES[activeStore];
                     const toBuy = groceryList.filter((i) => !i.inPantry);
                     let text;
                     if (sm) {
@@ -592,7 +622,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                     fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
                     transition: "all 0.2s",
                   }}
-                >📋 Kopieer boodschappenlijst{preferredSupermarket && SUPERMARKET_AISLES[preferredSupermarket] ? ` (${SUPERMARKET_AISLES[preferredSupermarket].name})` : ""}</button>
+                >📋 Kopieer boodschappenlijst{preferredSupermarket && SUPERMARKET_AISLES[activeStore] ? ` (${SUPERMARKET_AISLES[activeStore].name})` : ""}</button>
               )}
 
               {!preferredSupermarket && (
@@ -711,6 +741,26 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
               </div>
             </div>
           )}
+        </div>
+      )}
+
+
+      {/* Lege-state */}
+      {!loading && mealPlans.length === 0 && (
+        <div style={{
+          background: "#FFFCF7", borderRadius: 20, padding: "28px 24px",
+          boxShadow: "0 2px 12px rgba(139,111,71,0.06)", marginBottom: 16,
+          border: "1px solid #EDE8E0", textAlign: "center",
+        }}>
+          <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>🍽️</span>
+          <p style={{
+            fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
+            margin: "0 0 4px",
+          }}>Plan je eerste maaltijd!</p>
+          <p style={{
+            fontSize: 13, color: "#A89B8A", margin: 0,
+            fontFamily: "'DM Sans', sans-serif",
+          }}>Tik op een dag hieronder om te beginnen</p>
         </div>
       )}
 

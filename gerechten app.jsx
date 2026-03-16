@@ -581,8 +581,8 @@ function CardHand({ recipes, onToggleFav, onRate, onDelete, onTagChange, onShare
                 display: "flex", flexDirection: "column",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-6px) scale(1.02)";
-                e.currentTarget.style.boxShadow = "0 12px 40px rgba(139,111,71,0.20)";
+                e.currentTarget.style.transform = "translateY(-6px) scale(1.03)";
+                e.currentTarget.style.boxShadow = "0 16px 48px rgba(139,111,71,0.25)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0) scale(1)";
@@ -686,6 +686,26 @@ function CardHand({ recipes, onToggleFav, onRate, onDelete, onTagChange, onShare
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div style={{
+      background: "#FFFCF7", borderRadius: 20, overflow: "hidden",
+      boxShadow: "0 2px 20px rgba(139,111,71,0.10)",
+      border: "1px solid #EDE8E0",
+    }}>
+      <div style={{
+        height: 160, background: "linear-gradient(90deg, #EDE8E0 25%, #F5EDE3 50%, #EDE8E0 75%)",
+        backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite",
+      }} />
+      <div style={{ padding: "16px 22px" }}>
+        <div style={{ height: 14, background: "#EDE8E0", borderRadius: 8, width: "70%", marginBottom: 10, animation: "shimmer 1.5s infinite", backgroundSize: "200% 100%", backgroundImage: "linear-gradient(90deg, #EDE8E0 25%, #F5EDE3 50%, #EDE8E0 75%)" }} />
+        <div style={{ height: 10, background: "#EDE8E0", borderRadius: 6, width: "90%", marginBottom: 6, animation: "shimmer 1.5s infinite", backgroundSize: "200% 100%", backgroundImage: "linear-gradient(90deg, #EDE8E0 25%, #F5EDE3 50%, #EDE8E0 75%)" }} />
+        <div style={{ height: 10, background: "#EDE8E0", borderRadius: 6, width: "50%", animation: "shimmer 1.5s infinite", backgroundSize: "200% 100%", backgroundImage: "linear-gradient(90deg, #EDE8E0 25%, #F5EDE3 50%, #EDE8E0 75%)" }} />
+      </div>
     </div>
   );
 }
@@ -884,11 +904,32 @@ function PantrySection({ pantry, onAdd, onAddMultiple, onRemove, onClear }) {
 
       {pantry.length === 0 && !showAdd && !showScanner && (
         <div style={{
-          textAlign: "center", padding: "20px 0 8px", color: "#B5A999",
+          textAlign: "center", padding: "24px 16px 12px", color: "#B5A999",
           fontFamily: "'DM Sans', sans-serif", fontSize: 14,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 6 }}>🛒</div>
-          Scan je koelkast of voeg handmatig producten toe
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🛒</div>
+          <p style={{ margin: "0 0 6px", fontWeight: 500, color: "#8C7E6F" }}>Scan je koelkast of voeg handmatig producten toe</p>
+          <p style={{ margin: "0 0 16px", fontSize: 13, color: "#B5A999", lineHeight: 1.5 }}>
+            Voeg ingrediënten toe zodat we recepten kunnen suggereren op basis van wat je al in huis hebt.
+          </p>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10,
+            maxWidth: 280, margin: "0 auto",
+          }}>
+            {[
+              { emoji: "\uD83E\uDD66", label: "Groente" },
+              { emoji: "\uD83E\uDD69", label: "Vlees" },
+              { emoji: "\uD83E\uDDC0", label: "Zuivel" },
+            ].map((cat) => (
+              <div key={cat.label} style={{
+                background: "#FAF7F2", borderRadius: 12, padding: "12px 8px",
+                border: "1px solid #EDE8E0", textAlign: "center",
+              }}>
+                <div style={{ fontSize: 22, marginBottom: 4 }}>{cat.emoji}</div>
+                <div style={{ fontSize: 11, color: "#A89B8A", fontWeight: 500 }}>{cat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -908,6 +949,8 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
   const [shareEmail, setShareEmail] = useState("");
   const [shareStatus, setShareStatus] = useState("");
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const [scaledServings, setScaledServings] = useState(recipe.servings || 2);
+  const scaleFactor = (recipe.servings && recipe.servings > 0) ? scaledServings / recipe.servings : 1;
   const visual = CUISINE_VISUALS[recipe.cuisine] || DEFAULT_VISUAL;
   const daysSinceCooked = recipe.lastCookedAt ? Math.floor((Date.now() - new Date(recipe.lastCookedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
   const [heroImage, setHeroImage] = useState(recipe.imageUrl || null);
@@ -1056,16 +1099,16 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
           {recipe.servings && (
             <span style={{ fontSize: 12, color: "#8C7E6F", fontFamily: "'DM Sans', sans-serif" }}>👥 {recipe.servings}p</span>
           )}
-          <span style={{
-            fontSize: 11, color: daysSinceCooked !== null ? "#6B8F5E" : "#B5A999",
-            fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
-            background: daysSinceCooked !== null ? "#6B8F5E12" : "#F5F2ED",
-            borderRadius: 8, padding: "2px 8px",
-          }}>
-            {daysSinceCooked !== null
-              ? daysSinceCooked === 0 ? "🍳 Vandaag gekookt" : `🍳 ${daysSinceCooked}d geleden`
-              : "Nog nooit gekookt"}
-          </span>
+          {daysSinceCooked !== null && (
+            <span style={{
+              fontSize: 11, color: "#6B8F5E",
+              fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
+              background: "#6B8F5E12",
+              borderRadius: 8, padding: "2px 8px",
+            }}>
+              {daysSinceCooked === 0 ? "🍳 Vandaag gekookt" : `🍳 ${daysSinceCooked}d geleden`}
+            </span>
+          )}
         </div>
 
         <p style={{
@@ -1140,6 +1183,38 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
             <div style={{
               display: "grid", gridTemplateColumns: "1fr", gap: 16,
             }}>
+              {/* Portie scaler */}
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  background: "#FAF7F2", borderRadius: 14, padding: "12px 16px",
+                  border: "1px solid #EDE8E0", marginBottom: 12,
+                }}>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#6B5D4F", fontWeight: 500 }}>
+                    👥 Porties
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <button onClick={() => setScaledServings(Math.max(1, scaledServings - 1))}
+                      style={{
+                        width: 30, height: 30, borderRadius: 8, border: "1.5px solid #E2DAD0",
+                        background: "#FFFCF7", color: "#8B6F47", fontSize: 16, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
+                      }}>−</button>
+                    <span style={{
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 18, fontWeight: 700,
+                      color: scaledServings !== (recipe.servings || 2) ? "#D4A574" : "#3D2E1F",
+                      minWidth: 24, textAlign: "center",
+                    }}>{scaledServings}</span>
+                    <button onClick={() => setScaledServings(scaledServings + 1)}
+                      style={{
+                        width: 30, height: 30, borderRadius: 8, border: "1.5px solid #E2DAD0",
+                        background: "#FFFCF7", color: "#8B6F47", fontSize: 16, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
+                      }}>+</button>
+                  </div>
+                </div>
+
               {/* Ingredients column */}
               <div style={{
                 background: "#FAF7F2", borderRadius: 14, padding: 16,
@@ -1153,7 +1228,17 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
                   fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: "#6B5D4F",
                   lineHeight: 2, paddingLeft: 18, margin: 0, listStyleType: "'• '",
                 }}>
-                  {recipe.ingredients?.map((ing, i) => <li key={i}>{ing}</li>)}
+                  {recipe.ingredients?.map((ing, i) => {
+                    // Schaal getallen in ingrediënten
+                    const scaled = scaleFactor !== 1
+                      ? ing.replace(/(\d+[.,]?\d*)/g, (match) => {
+                          const num = parseFloat(match.replace(",", "."));
+                          const result = Math.round(num * scaleFactor * 10) / 10;
+                          return String(result).replace(".", ",");
+                        })
+                      : ing;
+                    return <li key={i} style={{ color: scaleFactor !== 1 ? "#D4A574" : undefined }}>{scaled}</li>;
+                  })}
                 </ul>
               </div>
               {/* Steps column */}
@@ -1355,9 +1440,20 @@ export default function RecipeApp({ session }) {
   useEffect(() => {
     (async () => {
       try {
+        // Haal partner-IDs op
+        const { data: partnerLinks } = await supabase
+          .from("partners")
+          .select("user_id, partner_id")
+          .or(`user_id.eq.${user.id},partner_id.eq.${user.id}`);
+        const allUserIds = [user.id];
+        (partnerLinks || []).forEach(p => {
+          if (p.user_id !== user.id) allUserIds.push(p.user_id);
+          if (p.partner_id !== user.id) allUserIds.push(p.partner_id);
+        });
+
         const [recipesRes, pantryRes, profileRes, sharedRes, collectionsRes, publicRes] = await Promise.all([
-          supabase.from("recipes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-          supabase.from("pantry_items").select("*").eq("user_id", user.id),
+          supabase.from("recipes").select("*").in("user_id", allUserIds).order("created_at", { ascending: false }),
+          supabase.from("pantry_items").select("*").in("user_id", allUserIds),
           supabase.from("profiles").select("*").eq("id", user.id).single(),
           supabase.from("shared_recipes").select("recipe_id, recipes(*)").eq("shared_with", user.id),
           supabase.from("recipe_collections").select("*, recipe_collection_items(recipe_id)").eq("user_id", user.id).order("created_at", { ascending: false }),
@@ -1460,7 +1556,7 @@ export default function RecipeApp({ session }) {
     try {
       const servings = profile?.household_size || 2;
       const data = await geminiCall({
-        contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. De gebruiker wil een recept importeren van deze URL: ${importUrl}. Genereer een volledig recept in het Nederlands op basis van wat je weet over dit type gerecht/website. Maak het voor ${servings} personen.${profile?.allergies?.length ? ` BELANGRIJK - Allergie\u00EBn (gebruik deze ingredi\u00EBnten NOOIT): ${profile.allergies.join(", ")}` : ""}${profile?.dislikes?.length ? ` Vermijd: ${profile.dislikes.join(", ")}` : ""}
+        contents: [{ parts: [{ text: `Je bent een creatieve Nederlandse chef-kok. De gebruiker wil een recept importeren van deze URL: ${importUrl}. Genereer een volledig recept in het Nederlands op basis van wat je weet over dit type gerecht/website. Maak het voor ${servings} personen.${profile?.allergies?.length ? ` BELANGRIJK - Allergie\u00EBn (gebruik deze ingrediënten NOOIT): ${profile.allergies.join(", ")}` : ""}${profile?.dislikes?.length ? ` Vermijd: ${profile.dislikes.join(", ")}` : ""}
 Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backticks:
 {"title":"naam","description":"korte beschrijving in 1 zin","cuisine":"type keuken","prepTime":"bereidingstijd","servings":${servings},"ingredients":["ingredi\u00EBnt 1","ingredi\u00EBnt 2"],"steps":["stap 1","stap 2"],"tips":"optionele tip"}` }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json" },
@@ -1775,11 +1871,14 @@ ${userPrompt}` }] }],
   }
 
   return (
-    <div style={{
+    <div className={profile?.dark_mode ? "dark-mode" : ""} style={{
       minHeight: "100vh",
-      background: "linear-gradient(165deg, #F5EDE3 0%, #EDE3D5 50%, #E8DFD1 100%)",
+      background: profile?.dark_mode
+        ? "linear-gradient(165deg, #1A1612 0%, #1E1A15 50%, #231E19 100%)"
+        : "linear-gradient(165deg, #F5EDE3 0%, #EDE3D5 50%, #E8DFD1 100%)",
       fontFamily: "'DM Sans', sans-serif",
       overflowX: "hidden",
+      paddingBottom: 100,
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
@@ -1793,69 +1892,105 @@ ${userPrompt}` }] }],
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #C5BAA8; border-radius: 3px; }
+        .dark-mode { --bg: #1A1612; --bg2: #231E19; --card: #2A2420; --border: #3D352D; --text: #E8DFD1; --text2: #A89B8A; --accent: #D4A574; }
+        .dark-mode input, .dark-mode textarea { background: #2A2420 !important; border-color: #3D352D !important; color: #E8DFD1 !important; }
+        .dark-mode input::placeholder, .dark-mode textarea::placeholder { color: #6B5D4F !important; }
       `}</style>
 
       {/* Header */}
-      <div style={{
-        backgroundImage: "linear-gradient(to bottom, rgba(44,24,16,0.72) 0%, rgba(74,50,40,0.82) 50%, rgba(44,24,16,0.92) 100%), url('/images/hero-cooking.webp')",
-        backgroundSize: "cover", backgroundPosition: "center 40%",
-        padding: "36px 24px 28px", position: "relative", overflow: "hidden",
-      }}>
-        <div style={{ maxWidth: 520, margin: "0 auto", position: "relative" }}>
-          {/* Logo + subtitel gecentreerd */}
-          <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <img src="/images/logo.webp" alt="Onze Recepten"
-              style={{
-                width: 180, height: "auto", display: "block", margin: "0 auto 4px",
-                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))",
-              }}
-            />
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(197,186,168,0.7)",
-              margin: "6px 0 0", letterSpacing: 0.5,
-            }}>Je persoonlijke culinaire verzameling</p>
-          </div>
+      {activeTab === "recepten" ? (
+        <div style={{
+          backgroundImage: "linear-gradient(to bottom, rgba(44,24,16,0.72) 0%, rgba(74,50,40,0.82) 50%, rgba(44,24,16,0.92) 100%), url('/images/hero-cooking.webp')",
+          backgroundSize: "cover", backgroundPosition: "center 40%",
+          padding: "36px 24px 28px", position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ maxWidth: 520, margin: "0 auto", position: "relative" }}>
+            {/* Logo + subtitel gecentreerd */}
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <img src="/images/logo.webp" alt="Onze Recepten"
+                style={{
+                  width: 180, height: "auto", display: "block", margin: "0 auto 4px",
+                  filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))",
+                }}
+              />
+              <p style={{
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(197,186,168,0.7)",
+                margin: "6px 0 0", letterSpacing: 0.5,
+              }}>Je persoonlijke culinaire verzameling</p>
+            </div>
 
-          {/* Logged in user */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 22 }}>
+            {/* Logged in user */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 22 }}>
+              <div style={{
+                padding: "10px 24px", borderRadius: 28,
+                background: "linear-gradient(135deg, #D4A574, #C09060)",
+                color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 14,
+                boxShadow: "0 4px 16px rgba(212,165,116,0.3)",
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <span style={{
+                  width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 700,
+                }}>{(profile?.display_name || user.email).charAt(0).toUpperCase()}</span>
+                {profile?.display_name || user.email}
+              </div>
+            </div>
+
+            {/* Stats gecentreerd */}
             <div style={{
-              padding: "10px 24px", borderRadius: 28,
-              background: "linear-gradient(135deg, #D4A574, #C09060)",
-              color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 14,
-              boxShadow: "0 4px 16px rgba(212,165,116,0.3)",
-              display: "flex", alignItems: "center", gap: 8,
+              display: "flex", justifyContent: "center", gap: 32,
+              fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(197,186,168,0.8)",
             }}>
-              <span style={{
-                width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.2)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, fontWeight: 700,
-              }}>{(profile?.display_name || user.email).charAt(0).toUpperCase()}</span>
-              {profile?.display_name || user.email}
-            </div>
-          </div>
-
-          {/* Stats gecentreerd */}
-          <div style={{
-            display: "flex", justifyContent: "center", gap: 32,
-            fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(197,186,168,0.8)",
-          }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: "#F5EDE3", lineHeight: 1 }}>{recipes.length}</div>
-              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>recepten</div>
-            </div>
-            <div style={{ width: 1, background: "rgba(255,255,255,0.12)", alignSelf: "stretch" }} />
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: "#F5EDE3", lineHeight: 1 }}>{favCount}</div>
-              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>favorieten</div>
-            </div>
-            <div style={{ width: 1, background: "rgba(255,255,255,0.12)", alignSelf: "stretch" }} />
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: "#F5EDE3", lineHeight: 1 }}>{pantry.length}</div>
-              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>voorraad</div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#F5EDE3", lineHeight: 1 }}>{recipes.length}</div>
+                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>recepten</div>
+              </div>
+              <div style={{ width: 1, background: "rgba(255,255,255,0.12)", alignSelf: "stretch" }} />
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#F5EDE3", lineHeight: 1 }}>{favCount}</div>
+                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>favorieten</div>
+              </div>
+              <div style={{ width: 1, background: "rgba(255,255,255,0.12)", alignSelf: "stretch" }} />
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#F5EDE3", lineHeight: 1 }}>{pantry.length}</div>
+                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>voorraad</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div style={{
+          background: "linear-gradient(135deg, #3D2E1F, #4A3228)",
+          padding: "14px 24px",
+        }}>
+          <div style={{
+            maxWidth: 520, margin: "0 auto",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "linear-gradient(135deg, #D4A574, #C09060)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 700, color: "#fff",
+              }}>{(profile?.display_name || user.email).charAt(0).toUpperCase()}</span>
+              <span style={{
+                fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+                color: "#F5EDE3",
+              }}>{profile?.display_name || user.email}</span>
+            </div>
+            <div style={{
+              display: "flex", gap: 16,
+              fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(197,186,168,0.8)",
+            }}>
+              <span><strong style={{ color: "#F5EDE3" }}>{recipes.length}</strong> recepten</span>
+              <span><strong style={{ color: "#F5EDE3" }}>{favCount}</strong> fav</span>
+              <span><strong style={{ color: "#F5EDE3" }}>{pantry.length}</strong> voorraad</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px 144px" }}>
 
@@ -2000,6 +2135,7 @@ ${userPrompt}` }] }],
         {activeTab === "weekplanner" && (
           <WeekPlanner user={user} recipes={recipes} pantry={pantry}
             preferredSupermarket={profile?.preferred_supermarket || ""}
+            preferredSupermarkets={profile?.preferred_supermarkets || []}
             onNavigateToRecipes={(p) => { setPrompt(p); setActiveTab("recepten"); }} />
         )}
 
@@ -2565,6 +2701,10 @@ ${userPrompt}` }] }],
                       fontWeight: 600, cursor: "pointer",
                     }}>{showCreateCollection ? "Annuleer" : "+ Nieuw"}</button>
                 </div>
+                <p style={{
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#A89B8A",
+                  margin: "0 0 8px", lineHeight: 1.4,
+                }}>Groepeer recepten op thema, zoals &apos;Doordeweeks&apos; of &apos;Feestdagen&apos;</p>
                 {showCreateCollection && (
                   <div style={{ display: "flex", gap: 8, marginBottom: 10, animation: "fadeIn 0.2s ease" }}>
                     <input value={newCollectionName}
@@ -2722,8 +2862,15 @@ ${userPrompt}` }] }],
               </div>
             )}
 
+            {/* Skeleton loaders while loading */}
+            {storageLoading && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <SkeletonCard /><SkeletonCard /><SkeletonCard />
+              </div>
+            )}
+
             {/* Grouped card stacks by cuisine */}
-            {(() => {
+            {!storageLoading && (() => {
               // Group recipes by cuisine
               const groups = {};
               filtered.forEach(r => {
