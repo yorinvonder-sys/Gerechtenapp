@@ -2312,7 +2312,7 @@ ${userPrompt}` }] }],
                   </div>
 
                   <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Beschrijf wat je wilt eten..."
+                    placeholder="Beschrijf wat je de AI nog verder kwijt wilt..."
                     rows={2}
                     style={{
                       width: "100%", padding: "14px 16px", borderRadius: 14,
