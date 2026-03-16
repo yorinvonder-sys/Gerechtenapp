@@ -2258,60 +2258,9 @@ ${userPrompt}` }] }],
                 )}
               </div>
 
-              {/* STEP 0: Inspiratie & prompt */}
+              {/* STEP 0: Prompt & URL import */}
               {wizardStep === 0 && !choosingRecipe && !loading && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  {/* Quick inspiration cards */}
-                  {(() => {
-                    const hour = new Date().getHours();
-                    const mealSuggestion = hour < 10 ? "Ontbijt" : hour < 14 ? "Lunch" : hour < 17 ? "Tussendoortje" : "Diner";
-                    const mealEmoji = hour < 10 ? "🥐" : hour < 14 ? "🥗" : hour < 17 ? "🍪" : "🍽️";
-                    const quickPicks = [
-                      { label: mealSuggestion, emoji: mealEmoji, prompt: `Een lekker ${mealSuggestion.toLowerCase()} gerecht`, sub: "Past bij dit moment" },
-                      { label: "Iets snels", emoji: "⚡", prompt: "Een snel en makkelijk gerecht onder 15 minuten", sub: "Klaar in 15 min" },
-                      { label: "Comfort food", emoji: "🫕", prompt: "Een lekker comfort food gerecht, hartig en warm", sub: "Hartig & warm" },
-                      { label: "Gezond", emoji: "🥦", prompt: "Een gezond en voedzaam gerecht met veel groenten", sub: "Vol groenten" },
-                      { label: "Budget", emoji: "💰", prompt: "Een lekker maar goedkoop gerecht met simpele ingrediënten", sub: "Simpele ingrediënten" },
-                      { label: "Verrassend", emoji: "🎲", prompt: "Verras me met een onverwacht maar lekker gerecht", sub: "Laat je verrassen" },
-                    ];
-                    return (
-                      <div style={{ marginBottom: 16 }}>
-                        <p style={{ fontSize: 12, color: "#A89B8A", margin: "0 0 10px", fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
-                          Snelle inspiratie
-                        </p>
-                        <div style={{
-                          display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8,
-                        }}>
-                          {quickPicks.map((pick) => (
-                            <button key={pick.label} onClick={() => { setPrompt(pick.prompt); setWizardStep(1); }}
-                              style={{
-                                padding: "14px 10px", borderRadius: 14,
-                                border: prompt === pick.prompt ? "2px solid #8B6F47" : "1.5px solid #EDE8E0",
-                                background: prompt === pick.prompt ? "#8B6F4710" : "#FAF7F2",
-                                cursor: "pointer", transition: "all 0.2s",
-                                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                                textAlign: "center",
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#D4A574"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = prompt === pick.prompt ? "#8B6F47" : "#EDE8E0"; e.currentTarget.style.transform = "translateY(0)"; }}
-                            >
-                              <span style={{ fontSize: 24 }}>{pick.emoji}</span>
-                              <span style={{ fontSize: 12.5, fontWeight: 600, color: "#3D2E1F", fontFamily: "'DM Sans', sans-serif" }}>{pick.label}</span>
-                              <span style={{ fontSize: 10.5, color: "#A89B8A", fontFamily: "'DM Sans', sans-serif" }}>{pick.sub}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Divider */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "4px 0 14px" }}>
-                    <div style={{ flex: 1, height: 1, background: "#EDE8E0" }} />
-                    <span style={{ fontSize: 11, color: "#B5A999", fontFamily: "'DM Sans', sans-serif" }}>of typ zelf</span>
-                    <div style={{ flex: 1, height: 1, background: "#EDE8E0" }} />
-                  </div>
-
                   {/* URL Import */}
                   <div style={{ marginBottom: 14 }}>
                     <button onClick={() => setShowImportUrl(!showImportUrl)}
