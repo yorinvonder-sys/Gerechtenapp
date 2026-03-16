@@ -3271,6 +3271,23 @@ ${userPrompt}` }] }],
         )}
       </div>
 
+      {/* Floating Grocery Button */}
+      {activeTab !== "weekplanner" && (
+        <button onClick={() => setActiveTab("weekplanner")}
+          style={{
+            position: "fixed", bottom: 80, right: 20, zIndex: 1001,
+            width: 56, height: 56, borderRadius: "50%", border: "none",
+            background: "linear-gradient(135deg, #6B8F5E, #5A7D4E)",
+            color: "#fff", fontSize: 24, cursor: "pointer",
+            boxShadow: "0 4px 20px rgba(107,143,94,0.4)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 6px 28px rgba(107,143,94,0.5)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(107,143,94,0.4)"; }}
+        >🛒</button>
+      )}
+
       {/* Bottom Navigation */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0,
