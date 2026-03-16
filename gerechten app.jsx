@@ -1437,6 +1437,7 @@ export default function RecipeApp({ session }) {
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [sortBy, setSortBy] = useState("");
+  const [recipeSubTab, setRecipeSubTab] = useState("recepten");
   const [planningStep, setPlanningStep] = useState(false);
   const [recipePlanDays, setRecipePlanDays] = useState({});
 
@@ -2215,6 +2216,38 @@ ${userPrompt}` }] }],
 
         {activeTab === "recepten" && (
           <>
+            {/* Sub-tabs: Recepten / Verzameld / Favorieten */}
+            <div style={{
+              display: "flex", gap: 0, marginBottom: 20,
+              background: "#F5EDE3", borderRadius: 16, padding: 4,
+            }}>
+              {[
+                { id: "recepten", label: "Recepten", icon: "📖" },
+                { id: "verzameld", label: "Verzameld", icon: "📂" },
+                { id: "favorieten", label: "Favorieten", icon: "❤️" },
+              ].map(tab => {
+                const isActive = recipeSubTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setRecipeSubTab(tab.id)}
+                    style={{
+                      flex: 1, padding: "10px 8px", borderRadius: 12, border: "none",
+                      background: isActive ? "#FFFCF7" : "transparent",
+                      boxShadow: isActive ? "0 2px 8px rgba(139,111,71,0.12)" : "none",
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                      fontWeight: isActive ? 700 : 500,
+                      color: isActive ? "#3D2E1F" : "#A89B8A",
+                      cursor: "pointer", transition: "all 0.2s",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    }}>
+                    <span style={{ fontSize: 15 }}>{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {recipeSubTab === "recepten" && (
+            <>
             {/* Generator - Wizard */}
             <div style={{
               background: "#FFFCF7", borderRadius: 24, padding: "28px 24px 22px",
@@ -3074,6 +3107,159 @@ ${userPrompt}` }] }],
                             onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
                             onMarkCooked={markAsCooked} collections={collections}
                             onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            </>
+            )}
+
+            {/* Favorieten sub-tab */}
+            {recipeSubTab === "favorieten" && (() => {
+              const favRecipes = recipes.filter(r => r.favorite);
+              if (favRecipes.length === 0) return (
+                <div style={{
+                  textAlign: "center", padding: "40px 24px", color: "#A89B8A",
+                  background: "#FFFCF7", borderRadius: 20, border: "1px solid #EDE8E0",
+                  boxShadow: "0 2px 16px rgba(139,111,71,0.06)",
+                }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>❤️</div>
+                  <h3 style={{
+                    fontFamily: "'Playfair Display', serif", fontSize: 20, color: "#3D2E1F",
+                    margin: "0 0 8px",
+                  }}>Nog geen favorieten</h3>
+                  <p style={{
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#8C7E6F",
+                    margin: 0, lineHeight: 1.6,
+                  }}>Markeer recepten als favoriet door op het hartje te tikken.</p>
+                </div>
+              );
+
+              const groups = {};
+              favRecipes.forEach(r => {
+                const key = r.cuisine || "Overig";
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+              });
+              const sortedKeys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                  <p style={{
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#A89B8A",
+                    margin: "0 0 -12px",
+                  }}>{favRecipes.length} favoriet{favRecipes.length !== 1 ? "en" : ""}</p>
+                  {sortedKeys.map(cuisine => {
+                    const vis = CUISINE_VISUALS[cuisine] || DEFAULT_VISUAL;
+                    const groupRecipes = groups[cuisine];
+                    return (
+                      <div key={cuisine}>
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 10, marginBottom: 14, padding: "0 4px",
+                        }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10, background: vis.gradient,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 18, flexShrink: 0,
+                          }}>{vis.emoji}</div>
+                          <div>
+                            <h3 style={{
+                              fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700,
+                              color: "#3D2E1F", margin: 0, lineHeight: 1.2,
+                            }}>{cuisine}</h3>
+                            <p style={{
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#A89B8A", margin: 0,
+                            }}>{groupRecipes.length} recept{groupRecipes.length !== 1 ? "en" : ""}</p>
+                          </div>
+                        </div>
+                        {groupRecipes.length === 1 ? (
+                          <RecipeCard key={groupRecipes[0].id} recipe={groupRecipes[0]} onToggleFav={toggleFav}
+                            onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
+                            onMarkCooked={markAsCooked} collections={collections}
+                            onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
+                        ) : (
+                          <CardHand recipes={groupRecipes} onToggleFav={toggleFav}
+                            onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
+                            onMarkCooked={markAsCooked} collections={collections}
+                            onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Verzameld sub-tab */}
+            {recipeSubTab === "verzameld" && (() => {
+              if (collections.length === 0) return (
+                <div style={{
+                  textAlign: "center", padding: "40px 24px", color: "#A89B8A",
+                  background: "#FFFCF7", borderRadius: 20, border: "1px solid #EDE8E0",
+                  boxShadow: "0 2px 16px rgba(139,111,71,0.06)",
+                }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>📂</div>
+                  <h3 style={{
+                    fontFamily: "'Playfair Display', serif", fontSize: 20, color: "#3D2E1F",
+                    margin: "0 0 8px",
+                  }}>Nog geen verzamelingen</h3>
+                  <p style={{
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#8C7E6F",
+                    margin: "0 0 16px", lineHeight: 1.6,
+                  }}>Maak een verzameling aan om recepten te groeperen.</p>
+                  <button onClick={() => { setRecipeSubTab("recepten"); setShowCreateCollection(true); }}
+                    style={{
+                      padding: "10px 24px", borderRadius: 12, border: "none",
+                      background: "linear-gradient(135deg, #D4A574, #C09060)",
+                      color: "#fff", fontFamily: "'DM Sans', sans-serif", fontSize: 14,
+                      fontWeight: 600, cursor: "pointer",
+                      boxShadow: "0 3px 12px rgba(212,165,116,0.3)",
+                    }}>Maak verzameling</button>
+                </div>
+              );
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {collections.map(col => {
+                    const colRecipes = recipes.filter(r => col.recipeIds?.includes(r.id));
+                    return (
+                      <div key={col.id} style={{
+                        background: "#FFFCF7", borderRadius: 18, padding: "18px 20px",
+                        border: "1px solid #EDE8E0", boxShadow: "0 2px 16px rgba(139,111,71,0.06)",
+                      }}>
+                        <div style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          marginBottom: colRecipes.length > 0 ? 14 : 0,
+                        }}>
+                          <div>
+                            <h3 style={{
+                              fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700,
+                              color: "#3D2E1F", margin: 0,
+                            }}>{col.name}</h3>
+                            <p style={{
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#A89B8A", margin: "2px 0 0",
+                            }}>{colRecipes.length} recept{colRecipes.length !== 1 ? "en" : ""}</p>
+                          </div>
+                          <button onClick={() => deleteCollection(col.id)}
+                            style={{
+                              padding: "6px 12px", borderRadius: 8, border: "1px solid #E2DAD0",
+                              background: "transparent", color: "#C85A3D",
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                              cursor: "pointer",
+                            }}>Verwijder</button>
+                        </div>
+                        {colRecipes.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {colRecipes.map(r => (
+                              <RecipeCard key={r.id} recipe={r} onToggleFav={toggleFav}
+                                onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
+                                onMarkCooked={markAsCooked} collections={collections}
+                                onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
+                            ))}
+                          </div>
                         )}
                       </div>
                     );

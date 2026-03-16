@@ -148,6 +148,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
   const [shareStatus, setShareStatus] = useState("");
   const [sharedUsers, setSharedUsers] = useState([]);
   const [showGroceries, setShowGroceries] = useState(false);
+  const [expandedMeal, setExpandedMeal] = useState(null);
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [activeStore, setActiveStore] = useState(preferredSupermarket || (preferredSupermarkets.length > 0 ? preferredSupermarkets[0] : ""));
@@ -213,7 +214,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
     try {
       const { data } = await supabase
         .from("meal_plans")
-        .select("*, recipes(title, cuisine, prep_time)")
+        .select("*, recipes(*)")
         .gte("date", startDate)
         .lte("date", endDate)
         .in("user_id", [...userIds]);
@@ -862,7 +863,10 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                   <div key={mt.id}>
                     <div
                       onClick={() => {
-                        if (meal) return;
+                        if (meal && meal.recipes) {
+                          setExpandedMeal(expandedMeal?.id === meal.id ? null : meal);
+                          return;
+                        }
                         setShowPicker(isPicking ? null : { date: formatDate(date), mealType: mt.id, dateObj: date });
                         setSearchQuery("");
                       }}
@@ -871,7 +875,7 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                         padding: "10px 12px", borderRadius: 12,
                         background: meal ? "#FAF7F2" : isPicking ? "#8B6F4708" : "transparent",
                         border: isPicking ? "1.5px solid #D4A574" : meal ? "1px solid #EDE8E0" : "1px dashed #E2DAD0",
-                        cursor: meal ? "default" : "pointer",
+                        cursor: "pointer",
                         transition: "all 0.2s",
                       }}
                     >
@@ -916,6 +920,97 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
                         >✕</button>
                       )}
                     </div>
+
+                    {/* Recept detail view */}
+                    {expandedMeal?.id === meal?.id && meal?.recipes && (
+                      <div style={{
+                        marginTop: 8, padding: "16px", borderRadius: 14,
+                        background: "#FFFCF7", border: "1.5px solid #D4A574",
+                        animation: "fadeIn 0.2s ease",
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                          <div>
+                            <h4 style={{
+                              fontFamily: "'Playfair Display', serif", fontSize: 16, fontWeight: 700,
+                              color: "#3D2E1F", margin: "0 0 4px",
+                            }}>{meal.recipes.title}</h4>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              {meal.recipes.cuisine && (
+                                <span style={{ fontSize: 11, color: "#8B6F47", background: "#8B6F4712", borderRadius: 10, padding: "2px 8px", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+                                  {meal.recipes.cuisine}
+                                </span>
+                              )}
+                              {meal.recipes.prep_time && (
+                                <span style={{ fontSize: 11, color: "#6B5D4F", background: "#F0EBE4", borderRadius: 10, padding: "2px 8px", fontFamily: "'DM Sans', sans-serif" }}>
+                                  ⏱ {meal.recipes.prep_time}
+                                </span>
+                              )}
+                              {meal.recipes.servings && (
+                                <span style={{ fontSize: 11, color: "#6B5D4F", background: "#F0EBE4", borderRadius: 10, padding: "2px 8px", fontFamily: "'DM Sans', sans-serif" }}>
+                                  👥 {meal.recipes.servings}p
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button onClick={(e) => { e.stopPropagation(); setExpandedMeal(null); }}
+                            style={{ background: "none", border: "none", fontSize: 16, color: "#A89B8A", cursor: "pointer", padding: "2px 6px" }}>✕</button>
+                        </div>
+
+                        {meal.recipes.description && (
+                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#6B5D4F", margin: "0 0 14px", lineHeight: 1.5, fontStyle: "italic" }}>
+                            {meal.recipes.description}
+                          </p>
+                        )}
+
+                        {/* Ingrediënten */}
+                        {meal.recipes.ingredients?.length > 0 && (
+                          <div style={{ marginBottom: 14 }}>
+                            <h5 style={{ fontFamily: "'Playfair Display', serif", fontSize: 14, color: "#3D2E1F", margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                              🥘 Ingrediënten
+                            </h5>
+                            <ul style={{
+                              margin: 0, padding: "0 0 0 18px",
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F",
+                              lineHeight: 1.8,
+                            }}>
+                              {meal.recipes.ingredients.map((ing, i) => (
+                                <li key={i} style={{ paddingLeft: 4 }}>{ing}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Bereiding */}
+                        {meal.recipes.steps?.length > 0 && (
+                          <div style={{ marginBottom: 14 }}>
+                            <h5 style={{ fontFamily: "'Playfair Display', serif", fontSize: 14, color: "#3D2E1F", margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                              👨‍🍳 Bereiding
+                            </h5>
+                            <ol style={{
+                              margin: 0, padding: "0 0 0 22px",
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F",
+                              lineHeight: 1.8,
+                            }}>
+                              {meal.recipes.steps.map((step, i) => (
+                                <li key={i} style={{ paddingLeft: 4, marginBottom: 6 }}>{step}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+
+                        {/* Tips */}
+                        {meal.recipes.tips && (
+                          <div style={{
+                            padding: "10px 14px", borderRadius: 10,
+                            background: "#F5EDE3", border: "1px solid #EDE8E0",
+                            fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#6B5D4F",
+                            lineHeight: 1.5,
+                          }}>
+                            💡 <strong>Tip:</strong> {meal.recipes.tips}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Recept picker */}
                     {isPicking && (
