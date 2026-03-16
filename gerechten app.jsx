@@ -2360,14 +2360,82 @@ ${userPrompt}` }] }],
               </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {filtered.map((recipe) => (
-                <RecipeCard key={recipe.id} recipe={recipe} onToggleFav={toggleFav}
-                  onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
-                  onMarkCooked={markAsCooked} collections={collections}
-                  onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
-              ))}
-            </div>
+            {/* Grouped card stacks by cuisine */}
+            {(() => {
+              // Group recipes by cuisine
+              const groups = {};
+              filtered.forEach(r => {
+                const key = r.cuisine || "Overig";
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+              });
+              const sortedKeys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+
+              if (sortedKeys.length === 0) return null;
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                  {sortedKeys.map(cuisine => {
+                    const vis = CUISINE_VISUALS[cuisine] || DEFAULT_VISUAL;
+                    const groupRecipes = groups[cuisine];
+                    return (
+                      <div key={cuisine}>
+                        {/* Section header */}
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 10, marginBottom: 14,
+                          padding: "0 4px",
+                        }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10,
+                            background: vis.gradient,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 18, flexShrink: 0,
+                          }}>{vis.emoji}</div>
+                          <div>
+                            <h3 style={{
+                              fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700,
+                              color: "#3D2E1F", margin: 0, lineHeight: 1.2,
+                            }}>{cuisine}</h3>
+                            <p style={{
+                              fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#A89B8A",
+                              margin: 0,
+                            }}>{groupRecipes.length} recept{groupRecipes.length !== 1 ? "en" : ""}</p>
+                          </div>
+                        </div>
+
+                        {/* Card stack - horizontal scrollable fan */}
+                        {groupRecipes.length === 1 ? (
+                          <RecipeCard key={groupRecipes[0].id} recipe={groupRecipes[0]} onToggleFav={toggleFav}
+                            onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
+                            onMarkCooked={markAsCooked} collections={collections}
+                            onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
+                        ) : (
+                          <div style={{
+                            display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8,
+                            scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch",
+                            scrollbarWidth: "none", msOverflowStyle: "none",
+                            margin: "0 -16px", padding: "4px 16px 12px",
+                          }}>
+                            {groupRecipes.map((recipe, idx) => (
+                              <div key={recipe.id} style={{
+                                flex: `0 0 ${Math.min(85, 95 - groupRecipes.length * 2)}%`,
+                                scrollSnapAlign: "start",
+                                transition: "transform 0.3s ease",
+                              }}>
+                                <RecipeCard recipe={recipe} onToggleFav={toggleFav}
+                                  onRate={rateRecipe} onDelete={deleteRecipe} onTagChange={toggleTag} onShare={shareRecipe}
+                                  onMarkCooked={markAsCooked} collections={collections}
+                                  onAddToCollection={addToCollection} onRemoveFromCollection={removeFromCollection} onAddToPlanner={addToPlanner} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
