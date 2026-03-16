@@ -1437,6 +1437,8 @@ export default function RecipeApp({ session }) {
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [sortBy, setSortBy] = useState("");
+  const [planningStep, setPlanningStep] = useState(false);
+  const [recipePlanDays, setRecipePlanDays] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -1708,17 +1710,32 @@ ${userPrompt}` }] }],
     setSelectedSuggestions(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
   };
 
+  const startPlanningStep = () => {
+    // Pre-fill planning days: auto-assign each recipe to upcoming days for diner
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const plans = {};
+    selectedSuggestions.forEach((sugIdx, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      plans[sugIdx] = { date: d.toISOString().split("T")[0], mealType: "diner" };
+    });
+    setRecipePlanDays(plans);
+    setPlanningStep(true);
+  };
+
   const processSelectedSuggestions = async () => {
     const picks = selectedSuggestions.map(i => suggestions[i]);
     if (picks.length === 0) return;
 
-    setLoading(true); setChoosingRecipe(false);
+    setLoading(true); setChoosingRecipe(false); setPlanningStep(false);
     const servings = profile?.household_size || 2;
     const userPrompt = buildUserPrompt();
     const savedRecipes = [];
+    const planMapping = { ...recipePlanDays };
 
     for (let idx = 0; idx < picks.length; idx++) {
       const suggestion = picks[idx];
+      const sugIdx = selectedSuggestions[idx];
       setGenStatus(`Recept ${idx + 1}/${picks.length} uitwerken: ${suggestion.title}...`);
 
       try {
@@ -1750,6 +1767,11 @@ ${userPrompt}` }] }],
           const fullRecipe = { ...newRecipe, id: saved.id, isOwn: true };
           setRecipes(prev => [fullRecipe, ...prev]);
           savedRecipes.push(fullRecipe);
+          // Auto-plan: voeg toe aan weekplanner
+          const plan = planMapping[sugIdx];
+          if (plan?.date) {
+            await addToPlanner(saved.id, [plan.date], plan.mealType || "diner");
+          }
         }
       } catch (err) {
         setError(`Fout bij "${suggestion.title}": ${err.message || "Er ging iets mis."}`);
@@ -1759,10 +1781,11 @@ ${userPrompt}` }] }],
     setPrompt(""); setSelectedCuisines([]); setSelectedDiets([]); setSelectedTime("");
     setUsePantry(false); setSuggestions([]); setSelectedSuggestions([]);
     setPexelsImages({}); setGenStatus(""); setWizardStep(0);
+    setRecipePlanDays({}); setPlanningStep(false);
     setLoading(false);
 
-    // Navigate to weekplanner if multiple recipes were saved
-    if (savedRecipes.length > 1) {
+    // Navigate to weekplanner to see planned meals + grocery list
+    if (savedRecipes.length > 0) {
       setActiveTab("weekplanner");
     }
   };
@@ -2702,9 +2725,9 @@ ${userPrompt}` }] }],
                     })}
                   </div>
                   {/* Action bar */}
-                  {selectedSuggestions.length > 0 && (
+                  {selectedSuggestions.length > 0 && !planningStep && (
                     <div style={{ animation: "fadeIn 0.2s ease", marginTop: 4 }}>
-                      <button onClick={processSelectedSuggestions}
+                      <button onClick={startPlanningStep}
                         style={{
                           width: "100%", padding: "16px", borderRadius: 14, border: "none",
                           background: "linear-gradient(135deg, #D4A574 0%, #C09060 50%, #A67B50 100%)",
@@ -2716,20 +2739,139 @@ ${userPrompt}` }] }],
                         onMouseEnter={(e) => e.target.style.boxShadow = "0 8px 32px rgba(212,165,116,0.45)"}
                         onMouseLeave={(e) => e.target.style.boxShadow = "0 6px 24px rgba(212,165,116,0.35)"}
                       >
-                        ✨ {selectedSuggestions.length === 1
-                          ? `"${suggestions[selectedSuggestions[0]].title}" uitwerken`
-                          : `${selectedSuggestions.length} recepten uitwerken`
+                        📅 {selectedSuggestions.length === 1
+                          ? `"${suggestions[selectedSuggestions[0]].title}" inplannen`
+                          : `${selectedSuggestions.length} recepten inplannen`
                         }
-                        {selectedSuggestions.length > 1 && " → weekplanner"}
                       </button>
                       <p style={{ fontSize: 11, color: "#B5A999", textAlign: "center", margin: "8px 0 0", fontFamily: "'DM Sans', sans-serif" }}>
-                        {selectedSuggestions.length > 1
-                          ? "Recepten worden uitgewerkt en je gaat naar de weekplanner"
-                          : "Tik op meerdere kaarten om ze samen in te plannen"
-                        }
+                        Kies wanneer je elk gerecht wilt eten
                       </p>
                     </div>
                   )}
+
+                  {/* Planning step: kies dag per recept */}
+                  {planningStep && (() => {
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const dow = today.getDay();
+                    const mon = new Date(today); mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+                    const days14 = Array.from({ length: 14 }, (_, i) => {
+                      const d = new Date(mon); d.setDate(mon.getDate() + i);
+                      return d;
+                    });
+                    const dayLabels = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
+                    const mealTypes = [{id:"ontbijt",l:"Ontbijt",e:"🥐"},{id:"lunch",l:"Lunch",e:"🥗"},{id:"diner",l:"Diner",e:"🍽️"}];
+                    const isPast = (d) => d < today;
+                    const isToday = (d) => d.getDate()===today.getDate()&&d.getMonth()===today.getMonth();
+                    return (
+                      <div style={{ marginTop: 8, animation: "fadeIn 0.3s ease" }}>
+                        <div style={{
+                          background: "#FAF7F2", borderRadius: 16, padding: "18px 16px",
+                          border: "1.5px solid #6B8F5E40",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                            <span style={{ fontSize: 20 }}>📅</span>
+                            <div>
+                              <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, color: "#3D2E1F", fontWeight: 600 }}>
+                                Wanneer wil je eten?
+                              </span>
+                              <p style={{ fontSize: 11, color: "#A89B8A", margin: "2px 0 0", fontFamily: "'DM Sans', sans-serif" }}>
+                                Kies per gerecht een dag en maaltijd
+                              </p>
+                            </div>
+                          </div>
+
+                          {selectedSuggestions.map((sugIdx) => {
+                            const s = suggestions[sugIdx];
+                            const plan = recipePlanDays[sugIdx] || {};
+                            const vis = CUISINE_VISUALS[s.cuisine] || DEFAULT_VISUAL;
+                            return (
+                              <div key={sugIdx} style={{
+                                background: "#FFFCF7", borderRadius: 14, padding: "14px 14px 12px",
+                                border: "1px solid #EDE8E0", marginBottom: 10,
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                                  <span style={{ fontSize: 18 }}>{vis.emoji}</span>
+                                  <span style={{
+                                    fontFamily: "'Playfair Display', serif", fontSize: 14, fontWeight: 600,
+                                    color: "#3D2E1F", flex: 1,
+                                  }}>{s.title}</span>
+                                </div>
+                                {/* Meal type */}
+                                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                                  {mealTypes.map(mt => (
+                                    <button key={mt.id} onClick={() => setRecipePlanDays(prev => ({
+                                      ...prev, [sugIdx]: { ...prev[sugIdx], mealType: mt.id }
+                                    }))}
+                                      style={{
+                                        flex: 1, padding: "6px 4px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                                        fontFamily: "'DM Sans', sans-serif", cursor: "pointer", transition: "all 0.15s",
+                                        border: (plan.mealType || "diner") === mt.id ? "2px solid #6B8F5E" : "1.5px solid #E2DAD0",
+                                        background: (plan.mealType || "diner") === mt.id ? "#6B8F5E10" : "transparent",
+                                        color: (plan.mealType || "diner") === mt.id ? "#5A7D4E" : "#8C7E6F",
+                                        display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+                                      }}>{mt.e} {mt.l}</button>
+                                  ))}
+                                </div>
+                                {/* Day picker: 2 weken */}
+                                <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+                                  {days14.map(d => {
+                                    const ds = d.toISOString().split("T")[0];
+                                    const sel = plan.date === ds;
+                                    const past = isPast(d) && !isToday(d);
+                                    return (
+                                      <button key={ds} onClick={() => !past && setRecipePlanDays(prev => ({
+                                        ...prev, [sugIdx]: { ...prev[sugIdx], date: ds }
+                                      }))}
+                                        style={{
+                                          flex: "1 0 calc(14.28% - 3px)", minWidth: 32, padding: "5px 2px",
+                                          borderRadius: 8, border: "none", fontSize: 10, fontWeight: 600,
+                                          fontFamily: "'DM Sans', sans-serif", cursor: past ? "default" : "pointer",
+                                          transition: "all 0.15s", display: "flex", flexDirection: "column",
+                                          alignItems: "center", gap: 1, opacity: past ? 0.35 : 1,
+                                          background: sel ? "linear-gradient(135deg, #6B8F5E, #5A7D4E)" : isToday(d) ? "#D4A57420" : "transparent",
+                                          color: sel ? "#fff" : "#3D2E1F",
+                                        }}>
+                                        <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7 }}>{dayLabels[d.getDay()]}</span>
+                                        <span>{d.getDate()}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Bevestig */}
+                          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                            <button onClick={() => setPlanningStep(false)}
+                              style={{
+                                padding: "12px 16px", borderRadius: 12, border: "1.5px solid #E2DAD0",
+                                background: "transparent", color: "#8C7E6F", fontSize: 13, fontWeight: 600,
+                                fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+                              }}>← Terug</button>
+                            <button onClick={processSelectedSuggestions}
+                              style={{
+                                flex: 1, padding: "14px", borderRadius: 12, border: "none",
+                                background: "linear-gradient(135deg, #6B8F5E, #5A7D4E)",
+                                color: "#fff", fontSize: 15, fontWeight: 700,
+                                fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
+                                boxShadow: "0 6px 24px rgba(107,143,94,0.3)",
+                                transition: "all 0.3s",
+                              }}
+                              onMouseEnter={(e) => e.target.style.boxShadow = "0 8px 32px rgba(107,143,94,0.4)"}
+                              onMouseLeave={(e) => e.target.style.boxShadow = "0 6px 24px rgba(107,143,94,0.3)"}
+                            >
+                              ✨ Uitwerken & inplannen
+                            </button>
+                          </div>
+                          <p style={{ fontSize: 11, color: "#6B8F5E", textAlign: "center", margin: "8px 0 0", fontFamily: "'DM Sans', sans-serif" }}>
+                            Recepten worden uitgewerkt en ingepland — boodschappenlijst wordt automatisch bijgewerkt
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
