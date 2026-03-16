@@ -1409,7 +1409,7 @@ export default function RecipeApp({ session }) {
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("recepten");
   const [publicRecipes, setPublicRecipes] = useState([]);
-  const [publicFilter, setPublicFilter] = useState({ cuisine: "", search: "", dietary: "" });
+  const [publicFilter, setPublicFilter] = useState({ cuisine: "", search: "", dietary: "", season: "" });
   const [publicPage, setPublicPage] = useState(0);
   const [prompt, setPrompt] = useState("");
   const [selectedCuisines, setSelectedCuisines] = useState([]);
@@ -1641,6 +1641,18 @@ Antwoord ALLEEN met valid JSON in dit exacte formaat, zonder markdown of backtic
       setError("Voer een beschrijving in, kies een keuken, of gebruik de voorraadkast!");
       return;
     }
+    // Rate limiting: max 20 AI calls per dag
+    if (profile) {
+      const today = new Date().toISOString().split("T")[0];
+      const callsToday = profile.daily_ai_calls_date === today ? (profile.daily_ai_calls || 0) : 0;
+      if (callsToday >= 20) {
+        setError("Je hebt vandaag het maximum van 20 AI-verzoeken bereikt. Probeer morgen opnieuw!");
+        return;
+      }
+      const newCalls = callsToday + 1;
+      setProfile(prev => ({ ...prev, daily_ai_calls: newCalls, daily_ai_calls_date: today }));
+      supabase.from("profiles").update({ daily_ai_calls: newCalls, daily_ai_calls_date: today }).eq("id", user.id);
+    }
     setError(""); setLoading(true); setSuggestions([]);
     setGenStatus("Receptideeën bedenken...");
 
@@ -1756,9 +1768,25 @@ ${userPrompt}` }] }],
 
   const toggleFav = (id) => {
     const recipe = recipes.find(r => r.id === id);
-    if (recipe) updateRecipeField(id, { favorite: !recipe.favorite });
+    if (!recipe) return;
+    // Optimistic update: UI eerst
+    setRecipes(prev => prev.map(r => r.id === id ? { ...r, favorite: !r.favorite } : r));
+    // Dan database
+    const dbUpdates = { favorite: !recipe.favorite };
+    supabase.from("recipes").update(dbUpdates).eq("id", id).eq("user_id", user.id)
+      .then(({ error }) => {
+        if (error) setRecipes(prev => prev.map(r => r.id === id ? { ...r, favorite: recipe.favorite } : r));
+      });
   };
-  const rateRecipe = (id, rating) => updateRecipeField(id, { rating });
+  const rateRecipe = (id, rating) => {
+    const recipe = recipes.find(r => r.id === id);
+    if (!recipe) return;
+    setRecipes(prev => prev.map(r => r.id === id ? { ...r, rating } : r));
+    supabase.from("recipes").update({ rating }).eq("id", id).eq("user_id", user.id)
+      .then(({ error }) => {
+        if (error) setRecipes(prev => prev.map(r => r.id === id ? { ...r, rating: recipe.rating } : r));
+      });
+  };
   const deleteRecipe = async (id) => {
     await supabase.from("recipes").delete().eq("id", id).eq("user_id", user.id);
     setRecipes(prev => prev.filter(r => r.id !== id));
@@ -1780,7 +1808,8 @@ ${userPrompt}` }] }],
     let query = supabase.from("public_recipes").select("*").order("created_at", { ascending: false }).range(page * 50, (page + 1) * 50 - 1);
     if (filters.cuisine) query = query.eq("cuisine", filters.cuisine);
     if (filters.dietary) query = query.contains("dietary", [filters.dietary]);
-    if (filters.search) query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+    if (filters.season) query = query.contains("season", [filters.season]);
+    if (filters.search) query = query.textSearch("fts", filters.search, { type: "websearch", config: "dutch" });
     const { data } = await query;
     const mapped = (data || []).map(r => ({
       id: r.id, title: r.title, description: r.description, cuisine: r.cuisine,
@@ -2027,6 +2056,27 @@ ${userPrompt}` }] }],
                     cursor: "pointer", transition: "all 0.2s",
                   }}
                 >{c || "Alles"}</button>
+              ))}
+            </div>
+
+            {/* Season filter */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+              {[
+                { id: "", label: "Alle seizoenen", emoji: "" },
+                { id: "lente", label: "Lente", emoji: "🌸" },
+                { id: "zomer", label: "Zomer", emoji: "☀️" },
+                { id: "herfst", label: "Herfst", emoji: "🍂" },
+                { id: "winter", label: "Winter", emoji: "❄️" },
+              ].map(s => (
+                <button key={s.id} onClick={() => { setPublicFilter(f => ({ ...f, season: s.id })); loadPublicRecipes({ ...publicFilter, season: s.id }, 0); }}
+                  style={{
+                    padding: "6px 12px", borderRadius: 20, border: publicFilter.season === s.id ? "2px solid #6B8F5E" : "1.5px solid #E2DAD0",
+                    background: publicFilter.season === s.id ? "#6B8F5E12" : "transparent",
+                    color: publicFilter.season === s.id ? "#6B8F5E" : "#8C7E6F",
+                    fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: publicFilter.season === s.id ? 600 : 400,
+                    cursor: "pointer", transition: "all 0.2s",
+                  }}
+                >{s.emoji} {s.label}</button>
               ))}
             </div>
 
