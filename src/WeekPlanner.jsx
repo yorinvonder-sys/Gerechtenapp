@@ -996,66 +996,6 @@ export default function WeekPlanner({ user, recipes, pantry = [], onNavigateToRe
         );
       })()}
 
-      {/* Seizoenstip */}
-      {onNavigateToRecipes && (() => {
-        const month = new Date().getMonth();
-        const seasons = {
-          winter: { months: [11, 0, 1], emoji: "❄️", label: "Winter", tip: "Stoofpotten, stamppot, soepen", suggestions: [
-            { label: "Stoofpot", prompt: "Maak een hartige winterse stoofpot" },
-            { label: "Stamppot", prompt: "Maak een klassieke stamppot" },
-            { label: "Soep", prompt: "Maak een verwarmende wintersoep" },
-          ]},
-          lente: { months: [2, 3, 4], emoji: "🌷", label: "Lente", tip: "Asperges, verse salades, lamsgerechten", suggestions: [
-            { label: "Asperges", prompt: "Maak een gerecht met verse asperges" },
-            { label: "Lentesalade", prompt: "Maak een frisse lentesalade" },
-            { label: "Lamsgerecht", prompt: "Maak een lamsgerecht voor de lente" },
-          ]},
-          zomer: { months: [5, 6, 7], emoji: "☀️", label: "Zomer", tip: "BBQ, gazpacho, verse vis, salades", suggestions: [
-            { label: "BBQ", prompt: "Maak een zomers BBQ-gerecht" },
-            { label: "Gazpacho", prompt: "Maak een verfrissende gazpacho" },
-            { label: "Verse vis", prompt: "Maak een licht zomers visgerecht" },
-          ]},
-          herfst: { months: [8, 9, 10], emoji: "🍂", label: "Herfst", tip: "Pompoen, paddenstoelen, wildgerechten", suggestions: [
-            { label: "Pompoen", prompt: "Maak een herfstig pompoengerecht" },
-            { label: "Paddenstoelen", prompt: "Maak een gerecht met paddenstoelen" },
-            { label: "Wild", prompt: "Maak een wildgerecht voor de herfst" },
-          ]},
-        };
-        const season = Object.values(seasons).find((s) => s.months.includes(month));
-        return (
-          <div style={{
-            background: "#FFFCF7", borderRadius: 20, padding: "20px 24px",
-            boxShadow: "0 4px 28px rgba(139,111,71,0.10)", marginTop: 6,
-            border: "1px solid #EDE8E0",
-          }}>
-            <h4 style={{
-              fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#3D2E1F",
-              margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8,
-            }}>{season.emoji} Seizoenstip</h4>
-            <p style={{
-              fontSize: 13, color: "#8C7E6F", margin: "0 0 14px",
-              fontFamily: "'DM Sans', sans-serif",
-            }}>
-              {season.label}: {season.tip}
-            </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {season.suggestions.map((s) => (
-                <button key={s.label} onClick={() => onNavigateToRecipes(s.prompt)}
-                  style={{
-                    padding: "8px 14px", borderRadius: 10,
-                    border: "1.5px solid #D4A574", background: "#D4A57410",
-                    color: "#8B6F47", fontSize: 12, fontWeight: 600,
-                    fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#D4A57425"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "#D4A57410"; }}
-                >{season.emoji} {s.label}</button>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
