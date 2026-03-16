@@ -596,6 +596,7 @@ function CardHand({ recipes, onToggleFav, onRate, onDelete, onTagChange, onShare
               }}>
                 {recipe.imageUrl && (
                   <img src={recipe.imageUrl} alt={recipe.title}
+                    onError={(e) => { e.target.style.display = "none"; }}
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 )}
                 {!recipe.imageUrl && (
@@ -984,7 +985,7 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
       }}>
         {heroImage ? (
           <>
-            <img src={heroImage} alt={recipe.title} style={{
+            <img src={heroImage} alt={recipe.title} onError={() => setHeroImage(null)} style={{
               width: "100%", height: 160, objectFit: "cover", display: "block",
             }} />
             <div style={{
@@ -1809,7 +1810,7 @@ ${userPrompt}` }] }],
     if (filters.cuisine) query = query.eq("cuisine", filters.cuisine);
     if (filters.dietary) query = query.contains("dietary", [filters.dietary]);
     if (filters.season) query = query.contains("season", [filters.season]);
-    if (filters.search) query = query.textSearch("fts", filters.search, { type: "websearch", config: "dutch" });
+    if (filters.search) query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
     const { data } = await query;
     const mapped = (data || []).map(r => ({
       id: r.id, title: r.title, description: r.description, cuisine: r.cuisine,
