@@ -68,6 +68,7 @@ const DEFAULT_VISUAL = { gradient: "linear-gradient(135deg, #8B6F47 0%, #6B5D4F 
 
 const NAV_ITEMS = [
   { id: "recepten", icon: "🍳", label: "Recepten" },
+  { id: "ontdek", icon: "🌍", label: "Ontdek" },
   { id: "voorraad", icon: "🧊", label: "Voorraadkast" },
   { id: "weekplanner", icon: "📅", label: "Weekplanner" },
   { id: "profiel", icon: "⚙️", label: "Instellingen" },
@@ -909,6 +910,19 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
   const visual = CUISINE_VISUALS[recipe.cuisine] || DEFAULT_VISUAL;
   const daysSinceCooked = recipe.lastCookedAt ? Math.floor((Date.now() - new Date(recipe.lastCookedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
+  const [heroImage, setHeroImage] = useState(recipe.imageUrl || null);
+
+  useEffect(() => {
+    if (heroImage) return;
+    const q = recipe.imageQuery || recipe.title;
+    const pexelsKey = import.meta.env.VITE_PEXELS_API_KEY;
+    if (pexelsKey) {
+      fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q + " food")}&per_page=1&orientation=landscape`, { headers: { Authorization: pexelsKey } })
+        .then(r => r.json()).then(d => { if (d.photos?.[0]?.src?.medium) setHeroImage(d.photos[0].src.medium); }).catch(() => {});
+    } else {
+      fetch(`/api/pexels?q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => { if (d.url) setHeroImage(d.url); }).catch(() => {});
+    }
+  }, [recipe.id]);
 
   return (
     <div style={{
@@ -921,15 +935,28 @@ function RecipeCard({ recipe, onToggleFav, onRate, onDelete, onTagChange, onShar
     >
       {/* Recipe Hero Banner */}
       <div style={{
-        background: visual.gradient, padding: "24px 22px 20px",
+        background: visual.gradient, padding: heroImage ? 0 : "24px 22px 20px",
         position: "relative", overflow: "hidden",
+        minHeight: heroImage ? 160 : "auto",
       }}>
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 60, opacity: 0.12, letterSpacing: 20,
-          pointerEvents: "none", userSelect: "none",
-        }}>{visual.pattern}</div>
+        {heroImage ? (
+          <>
+            <img src={heroImage} alt={recipe.title} style={{
+              width: "100%", height: 160, objectFit: "cover", display: "block",
+            }} />
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 100%)",
+            }} />
+          </>
+        ) : (
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 60, opacity: 0.12, letterSpacing: 20,
+            pointerEvents: "none", userSelect: "none",
+          }}>{visual.pattern}</div>
+        )}
         <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
@@ -1296,6 +1323,9 @@ export default function RecipeApp({ session }) {
   const [storageLoading, setStorageLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("recepten");
+  const [publicRecipes, setPublicRecipes] = useState([]);
+  const [publicFilter, setPublicFilter] = useState({ cuisine: "", search: "", dietary: "" });
+  const [publicPage, setPublicPage] = useState(0);
   const [prompt, setPrompt] = useState("");
   const [selectedCuisines, setSelectedCuisines] = useState([]);
   const [selectedDiets, setSelectedDiets] = useState([]);
@@ -1325,12 +1355,13 @@ export default function RecipeApp({ session }) {
   useEffect(() => {
     (async () => {
       try {
-        const [recipesRes, pantryRes, profileRes, sharedRes, collectionsRes] = await Promise.all([
+        const [recipesRes, pantryRes, profileRes, sharedRes, collectionsRes, publicRes] = await Promise.all([
           supabase.from("recipes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
           supabase.from("pantry_items").select("*").eq("user_id", user.id),
           supabase.from("profiles").select("*").eq("id", user.id).single(),
           supabase.from("shared_recipes").select("recipe_id, recipes(*)").eq("shared_with", user.id),
           supabase.from("recipe_collections").select("*, recipe_collection_items(recipe_id)").eq("user_id", user.id).order("created_at", { ascending: false }),
+          supabase.from("public_recipes").select("*").limit(50).order("created_at", { ascending: false }),
         ]);
         if (recipesRes.data) {
           const ownRecipes = recipesRes.data.map(r => ({
@@ -1357,6 +1388,13 @@ export default function RecipeApp({ session }) {
         if (collectionsRes.data) setCollections(collectionsRes.data.map(c => ({
           id: c.id, name: c.name, createdAt: c.created_at,
           recipeIds: (c.recipe_collection_items || []).map(i => i.recipe_id),
+        })));
+        if (publicRes.data) setPublicRecipes(publicRes.data.map(r => ({
+          id: r.id, title: r.title, description: r.description, cuisine: r.cuisine,
+          prepTime: r.prep_time, servings: r.servings, ingredients: r.ingredients,
+          steps: r.steps, tips: r.tips, tags: r.tags, imageQuery: r.image_query,
+          difficulty: r.difficulty, mealType: r.meal_type, dietary: r.dietary,
+          caloriesEstimate: r.calories_estimate, isPublic: true,
         })));
       } catch (e) { console.log("Loading:", e); }
       setStorageLoading(false);
@@ -1642,6 +1680,42 @@ ${userPrompt}` }] }],
     await Promise.all(promises);
   };
 
+  const loadPublicRecipes = async (filters = publicFilter, page = 0) => {
+    let query = supabase.from("public_recipes").select("*").order("created_at", { ascending: false }).range(page * 50, (page + 1) * 50 - 1);
+    if (filters.cuisine) query = query.eq("cuisine", filters.cuisine);
+    if (filters.dietary) query = query.contains("dietary", [filters.dietary]);
+    if (filters.search) query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+    const { data } = await query;
+    const mapped = (data || []).map(r => ({
+      id: r.id, title: r.title, description: r.description, cuisine: r.cuisine,
+      prepTime: r.prep_time, servings: r.servings, ingredients: r.ingredients,
+      steps: r.steps, tips: r.tips, tags: r.tags, imageQuery: r.image_query,
+      difficulty: r.difficulty, mealType: r.meal_type, dietary: r.dietary,
+      caloriesEstimate: r.calories_estimate, isPublic: true,
+    }));
+    if (page === 0) setPublicRecipes(mapped);
+    else setPublicRecipes(prev => [...prev, ...mapped]);
+    setPublicPage(page);
+  };
+
+  const importPublicRecipe = async (publicRecipe) => {
+    const newRecipe = {
+      title: publicRecipe.title, description: publicRecipe.description,
+      cuisine: publicRecipe.cuisine, prepTime: publicRecipe.prepTime,
+      servings: publicRecipe.servings, ingredients: publicRecipe.ingredients,
+      steps: publicRecipe.steps, tips: publicRecipe.tips,
+      addedBy: profile?.display_name || user.email,
+      favorite: false, rating: 0, tags: publicRecipe.tags || [],
+      createdAt: new Date().toISOString(),
+    };
+    const saved = await saveRecipe(newRecipe);
+    if (saved) {
+      setRecipes(prev => [{ ...newRecipe, id: saved.id, isOwn: true }, ...prev]);
+      return true;
+    }
+    return false;
+  };
+
   const toggleTag = (id, tag) => {
     const recipe = recipes.find(r => r.id === id);
     if (!recipe) return;
@@ -1784,6 +1858,135 @@ ${userPrompt}` }] }],
       </div>
 
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px 144px" }}>
+
+        {activeTab === "ontdek" && (
+          <div>
+            <h2 style={{
+              fontFamily: "'Playfair Display', serif", fontSize: 22, color: "#3D2E1F",
+              margin: "0 0 6px", display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <span style={{
+                background: "linear-gradient(135deg, #D4A574, #C09060)",
+                borderRadius: 12, padding: "6px 10px", fontSize: 20,
+              }}>🌍</span>
+              Ontdek recepten
+            </h2>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#A89B8A", margin: "0 0 16px" }}>
+              Blader door {publicRecipes.length > 0 ? "duizenden" : ""} recepten uit 20 keukens
+            </p>
+
+            {/* Filters */}
+            <div style={{
+              display: "flex", gap: 8, marginBottom: 16, overflowX: "auto",
+              scrollbarWidth: "none", msOverflowStyle: "none",
+            }}>
+              {["", "Italiaans", "Hollands", "Aziatisch", "Japans", "Mexicaans", "Frans", "Indiaas", "Thais", "Grieks", "Amerikaans", "Koreaans", "Spaans", "Turks"].map(c => (
+                <button key={c} onClick={() => { setPublicFilter(f => ({ ...f, cuisine: c })); loadPublicRecipes({ ...publicFilter, cuisine: c }, 0); }}
+                  style={{
+                    padding: "7px 14px", borderRadius: 20, whiteSpace: "nowrap", flexShrink: 0,
+                    border: publicFilter.cuisine === c ? "2px solid #8B6F47" : "1.5px solid #E2DAD0",
+                    background: publicFilter.cuisine === c ? "#8B6F4712" : "#FAF7F2",
+                    color: publicFilter.cuisine === c ? "#8B6F47" : "#6B5D4F",
+                    fontSize: 12, fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: publicFilter.cuisine === c ? 600 : 400,
+                    cursor: "pointer", transition: "all 0.2s",
+                  }}
+                >{c || "Alles"}</button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div style={{ position: "relative", marginBottom: 16 }}>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, pointerEvents: "none" }}>🔍</span>
+              <input value={publicFilter.search} onChange={(e) => {
+                const v = e.target.value;
+                setPublicFilter(f => ({ ...f, search: v }));
+                if (v.length >= 2 || v.length === 0) loadPublicRecipes({ ...publicFilter, search: v }, 0);
+              }}
+                placeholder="Zoek in alle recepten..."
+                style={{
+                  width: "100%", padding: "10px 14px 10px 38px", borderRadius: 12,
+                  border: "1.5px solid #E2DAD0", background: "#FAF7F2",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3D2E1F",
+                }}
+              />
+            </div>
+
+            {/* Recipe grid */}
+            {(() => {
+              const groups = {};
+              publicRecipes.forEach(r => {
+                const key = r.cuisine || "Overig";
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+              });
+              const sortedKeys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                  {sortedKeys.map(cuisine => {
+                    const vis = CUISINE_VISUALS[cuisine] || DEFAULT_VISUAL;
+                    const items = groups[cuisine];
+                    return (
+                      <div key={cuisine}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "0 4px" }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10, background: vis.gradient,
+                            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0,
+                          }}>{vis.emoji}</div>
+                          <div>
+                            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700, color: "#3D2E1F", margin: 0 }}>{cuisine}</h3>
+                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#A89B8A", margin: 0 }}>{items.length} recept{items.length !== 1 ? "en" : ""}</p>
+                          </div>
+                        </div>
+                        <div style={{
+                          display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8,
+                          scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch",
+                          scrollbarWidth: "none", msOverflowStyle: "none",
+                          margin: "0 -16px", padding: "4px 16px 12px",
+                        }}>
+                          {items.slice(0, 10).map((r) => (
+                            <button key={r.id} onClick={() => importPublicRecipe(r).then(ok => ok && setActiveTab("recepten"))}
+                              style={{
+                                flex: "0 0 220px", scrollSnapAlign: "start",
+                                borderRadius: 16, border: "none", overflow: "hidden",
+                                background: "#FFFCF7", cursor: "pointer",
+                                boxShadow: "0 2px 12px rgba(139,111,71,0.08)",
+                                transition: "all 0.3s ease", textAlign: "left",
+                                display: "flex", flexDirection: "column",
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(139,111,71,0.16)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(139,111,71,0.08)"; }}
+                            >
+                              <div style={{ height: 100, background: vis.gradient, position: "relative", overflow: "hidden" }}>
+                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, opacity: 0.15 }}>{vis.pattern}</div>
+                                <div style={{ position: "absolute", bottom: 8, left: 8, background: "rgba(255,255,255,0.9)", borderRadius: 12, padding: "3px 8px", fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", color: "#6B5D4F" }}>⏱ {r.prepTime}</div>
+                                {r.difficulty && <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(255,255,255,0.9)", borderRadius: 12, padding: "3px 8px", fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", color: "#8B6F47" }}>{r.difficulty}</div>}
+                              </div>
+                              <div style={{ padding: "10px 12px 12px", flex: 1 }}>
+                                <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: 13, fontWeight: 700, color: "#3D2E1F", margin: "0 0 4px", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.title}</h4>
+                                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "#8C7E6F", margin: 0, lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.description}</p>
+                                <div style={{ marginTop: 8, fontSize: 11, color: "#D4A574", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>+ Toevoegen aan mijn recepten</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {publicRecipes.length >= 50 && (
+                    <button onClick={() => loadPublicRecipes(publicFilter, publicPage + 1)}
+                      style={{
+                        width: "100%", padding: "14px", borderRadius: 14, border: "1.5px solid #D4A574",
+                        background: "transparent", color: "#D4A574", fontFamily: "'DM Sans', sans-serif",
+                        fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                      }}
+                    >Meer recepten laden...</button>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {activeTab === "voorraad" && (
           <PantrySection pantry={pantry} onAdd={addPantryItem} onAddMultiple={addPantryItems}
