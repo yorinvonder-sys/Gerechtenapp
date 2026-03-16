@@ -531,133 +531,158 @@ Antwoord ALLEEN met valid JSON in dit formaat, zonder markdown of backticks:
   );
 }
 
-/* ─── Card Hand (Picnic-style stacked cards) ─── */
+/* ─── Card Hand (Picnic-style horizontal carousel) ─── */
 
 function CardHand({ recipes, onToggleFav, onRate, onDelete, onTagChange, onShare, onMarkCooked, collections, onAddToCollection, onRemoveFromCollection, onAddToPlanner }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const touchRef = useRef({ startX: 0, startY: 0 });
-  const containerRef = useRef(null);
+  const [expandedId, setExpandedId] = useState(null);
+  const scrollRef = useRef(null);
 
-  const goTo = (idx) => setActiveIndex(Math.max(0, Math.min(recipes.length - 1, idx)));
-  const next = () => goTo(activeIndex + 1);
-  const prev = () => goTo(activeIndex - 1);
-
-  const handleTouchStart = (e) => {
-    touchRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
-  };
-  const handleTouchEnd = (e) => {
-    const dx = e.changedTouches[0].clientX - touchRef.current.startX;
-    const dy = e.changedTouches[0].clientY - touchRef.current.startY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx < 0) next(); else prev();
-    }
-  };
+  // If a card is expanded, show full RecipeCard
+  if (expandedId) {
+    const recipe = recipes.find(r => r.id === expandedId);
+    if (!recipe) { setExpandedId(null); return null; }
+    return (
+      <div style={{ animation: "fadeIn 0.3s ease" }}>
+        <button onClick={() => setExpandedId(null)}
+          style={{
+            background: "none", border: "none", color: "#8B6F47", fontSize: 13,
+            fontFamily: "'DM Sans', sans-serif", fontWeight: 600, cursor: "pointer",
+            padding: "0 0 10px", display: "flex", alignItems: "center", gap: 4,
+          }}>← Terug naar overzicht</button>
+        <RecipeCard recipe={recipe} onToggleFav={onToggleFav}
+          onRate={onRate} onDelete={onDelete} onTagChange={onTagChange} onShare={onShare}
+          onMarkCooked={onMarkCooked} collections={collections}
+          onAddToCollection={onAddToCollection} onRemoveFromCollection={onRemoveFromCollection} onAddToPlanner={onAddToPlanner} />
+      </div>
+    );
+  }
 
   return (
     <div>
-      {/* Card stack area */}
-      <div ref={containerRef}
-        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
-        style={{
-          position: "relative", height: 320, perspective: "1200px",
-          margin: "0 auto", maxWidth: 480,
-        }}
-      >
-        {recipes.map((recipe, i) => {
-          const offset = i - activeIndex;
-          const isActive = offset === 0;
-          const isVisible = Math.abs(offset) <= 2;
-          if (!isVisible) return null;
-
-          const translateX = offset * 30;
-          const translateZ = -Math.abs(offset) * 40;
-          const rotateY = offset * -5;
-          const scale = 1 - Math.abs(offset) * 0.06;
-          const opacity = 1 - Math.abs(offset) * 0.3;
+      {/* Horizontal scrollable card carousel */}
+      <div ref={scrollRef} style={{
+        display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8,
+        scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch",
+        scrollbarWidth: "none", msOverflowStyle: "none",
+        margin: "0 -16px", padding: "4px 16px 12px",
+      }}>
+        {recipes.map((recipe, idx) => {
           const vis = CUISINE_VISUALS[recipe.cuisine] || DEFAULT_VISUAL;
-
           return (
-            <div key={recipe.id}
-              onClick={() => !isActive && goTo(i)}
+            <button key={recipe.id}
+              onClick={() => setExpandedId(recipe.id)}
               style={{
-                position: "absolute", top: 0, left: 0, right: 0,
-                transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
-                opacity, zIndex: 10 - Math.abs(offset),
-                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                cursor: isActive ? "default" : "pointer",
-                pointerEvents: isActive ? "auto" : "auto",
-                transformStyle: "preserve-3d",
+                flex: "0 0 280px", scrollSnapAlign: "start",
+                borderRadius: 20, border: "none", overflow: "hidden",
+                background: "#FFFCF7", cursor: "pointer",
+                boxShadow: "0 4px 20px rgba(139,111,71,0.10)",
+                transition: "all 0.3s ease", textAlign: "left",
+                display: "flex", flexDirection: "column",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-6px) scale(1.02)";
+                e.currentTarget.style.boxShadow = "0 12px 40px rgba(139,111,71,0.20)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0) scale(1)";
+                e.currentTarget.style.boxShadow = "0 4px 20px rgba(139,111,71,0.10)";
               }}
             >
-              {isActive ? (
-                <RecipeCard recipe={recipe} onToggleFav={onToggleFav}
-                  onRate={onRate} onDelete={onDelete} onTagChange={onTagChange} onShare={onShare}
-                  onMarkCooked={onMarkCooked} collections={collections}
-                  onAddToCollection={onAddToCollection} onRemoveFromCollection={onRemoveFromCollection} onAddToPlanner={onAddToPlanner} />
-              ) : (
-                /* Mini preview card for non-active cards */
-                <div style={{
-                  background: "#FFFCF7", borderRadius: 20, overflow: "hidden",
-                  boxShadow: "0 4px 24px rgba(139,111,71,0.15)",
-                  border: "1px solid #EDE8E0", height: 280,
-                }}>
+              {/* Image area */}
+              <div style={{
+                height: 140, width: "100%", position: "relative",
+                background: vis.gradient, overflow: "hidden",
+              }}>
+                {recipe.imageUrl && (
+                  <img src={recipe.imageUrl} alt={recipe.title}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                )}
+                {!recipe.imageUrl && (
                   <div style={{
-                    background: vis.gradient, height: 100, position: "relative",
+                    position: "absolute", inset: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {recipe.imageUrl && <img src={recipe.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute" }} />}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 50, background: "linear-gradient(transparent, rgba(0,0,0,0.4))" }} />
-                    <div style={{ position: "absolute", bottom: 8, left: 12, color: "#fff", fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "3px 8px" }}>
-                      ⏱ {recipe.prepTime}
-                    </div>
-                  </div>
-                  <div style={{ padding: "14px 16px" }}>
-                    <h3 style={{
-                      fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700,
-                      color: "#3D2E1F", margin: "0 0 6px", lineHeight: 1.3,
-                      display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                    }}>{recipe.title}</h3>
-                    <p style={{
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#8C7E6F",
-                      margin: 0, lineHeight: 1.4,
-                      display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                    }}>{recipe.description}</p>
-                  </div>
+                    fontSize: 48, opacity: 0.2, letterSpacing: 12,
+                  }}>{vis.pattern}</div>
+                )}
+                <div style={{
+                  position: "absolute", bottom: 0, left: 0, right: 0, height: 60,
+                  background: "linear-gradient(transparent, rgba(0,0,0,0.45))",
+                }} />
+                {/* Badges */}
+                <div style={{
+                  position: "absolute", top: 10, left: 10,
+                  background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+                  borderRadius: 20, padding: "4px 10px",
+                  fontSize: 11, fontWeight: 600, color: "#6B5D4F",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>{vis.emoji} {recipe.cuisine}</div>
+                <div style={{
+                  position: "absolute", bottom: 10, left: 10,
+                  background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+                  borderRadius: 20, padding: "4px 10px",
+                  fontSize: 11, fontWeight: 500, color: "#6B5D4F",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>⏱ {recipe.prepTime}</div>
+                {recipe.favorite && (
+                  <div style={{
+                    position: "absolute", top: 10, right: 10,
+                    background: "rgba(200,90,61,0.9)", borderRadius: 20, padding: "4px 8px",
+                    fontSize: 11, color: "#fff",
+                  }}>❤️</div>
+                )}
+                {recipe.rating > 0 && (
+                  <div style={{
+                    position: "absolute", bottom: 10, right: 10,
+                    background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+                    borderRadius: 20, padding: "4px 8px",
+                    fontSize: 11, fontWeight: 600, color: "#D4A574",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}>{"★".repeat(recipe.rating)}</div>
+                )}
+              </div>
+
+              {/* Content */}
+              <div style={{ padding: "14px 16px 16px", flex: 1, display: "flex", flexDirection: "column" }}>
+                <h3 style={{
+                  fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700,
+                  color: "#3D2E1F", margin: "0 0 6px", lineHeight: 1.3,
+                  display: "-webkit-box", WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>{recipe.title}</h3>
+                <p style={{
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#8C7E6F",
+                  margin: "0 0 10px", lineHeight: 1.4, flex: 1,
+                  display: "-webkit-box", WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>{recipe.description}</p>
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  paddingTop: 10, borderTop: "1px solid #F0EBE4",
+                }}>
+                  <span style={{ fontSize: 11, color: "#A89B8A", fontFamily: "'DM Sans', sans-serif" }}>
+                    👨‍🍳 {recipe.addedBy} · 👥 {recipe.servings || 2}p
+                  </span>
+                  <span style={{
+                    fontSize: 12, fontWeight: 600, color: "#D4A574",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}>Bekijk →</span>
                 </div>
-              )}
-            </div>
+              </div>
+            </button>
           );
         })}
       </div>
 
-      {/* Navigation dots */}
+      {/* Scroll indicator dots */}
       {recipes.length > 1 && (
-        <div style={{
-          display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
-          marginTop: 12,
-        }}>
-          <button onClick={prev} disabled={activeIndex === 0}
-            style={{
-              background: "none", border: "none", fontSize: 18, cursor: activeIndex === 0 ? "default" : "pointer",
-              color: activeIndex === 0 ? "#E2DAD0" : "#D4A574", padding: "4px 8px",
-              transition: "color 0.2s",
-            }}>‹</button>
+        <div style={{ display: "flex", justifyContent: "center", gap: 5, marginTop: 4 }}>
           {recipes.map((_, i) => (
-            <button key={i} onClick={() => goTo(i)}
-              style={{
-                width: i === activeIndex ? 20 : 8, height: 8, borderRadius: 4, border: "none",
-                background: i === activeIndex ? "linear-gradient(135deg, #D4A574, #C09060)" : "#E2DAD0",
-                cursor: "pointer", transition: "all 0.3s ease", padding: 0,
-              }}
-            />
+            <div key={i} style={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: i === 0 ? "#D4A574" : "#E2DAD0",
+              transition: "background 0.2s",
+            }} />
           ))}
-          <button onClick={next} disabled={activeIndex === recipes.length - 1}
-            style={{
-              background: "none", border: "none", fontSize: 18,
-              cursor: activeIndex === recipes.length - 1 ? "default" : "pointer",
-              color: activeIndex === recipes.length - 1 ? "#E2DAD0" : "#D4A574", padding: "4px 8px",
-              transition: "color 0.2s",
-            }}>›</button>
         </div>
       )}
     </div>
